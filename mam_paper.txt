@@ -1,0 +1,968 @@
+     MAM: Modular Multi-Agent Framework for Multi-Modal Medical
+            Diagnosis via Role-Specialized Collaboration
+
+                        Yucheng Zhou, Lingran Song, Jianbing Shen*
+                           SKL-IOTSC, CIS, University of Macau
+                yucheng.zhou@connect.um.edu.mo, jianbingshen@um.edu.mo
+
+
+
+                      Abstract                               video (Liu et al., 2023a; Chu et al., 2023; Zhang
+    Recent advancements in medical Large Lan-                et al., 2023a). This formidable reasoning capacity
+    guage Models (LLMs) have showcased their                 holds significant promise for addressing problems
+    powerful reasoning and diagnostic capabili-              in medical diagnostics.
+    ties. Despite their success, current unified                For medical practice, physicians are confronted
+    multimodal medical LLMs face limitations in              with a deluge of heterogeneous medical data, en-
+    knowledge update costs, comprehensiveness,               compassing textual reports, medical images, car-
+    and flexibility. To address these challenges, we
+                                                             diac sounds, and even surgical video recordings.
+    introduce the Modular Multi-Agent Framework
+    for Multi-Modal Medical Diagnosis (MAM).                 Accurately extracting critical information from this
+    Inspired by our empirical findings highlighting          complex data to arrive at precise diagnoses places a
+    the benefits of role assignment and diagnos-             significant cognitive burden and challenge on clin-
+    tic discernment in LLMs, MAM decomposes                  icians. Furthermore, the growth in the volume of
+    the medical diagnostic process into specialized          medical diagnostic data provides a substantial foun-
+    roles: a General Practitioner, Specialist Team,          dation for the training of LLMs. Consequently, the
+    Radiologist, Medical Assistant, and Director,
+                                                             development of LLMs to enhance medical diagnos-
+    each embodied by an LLM-based agent. This
+    modular and collaborative framework enables
+                                                             tic workflows is crucial.
+    efficient knowledge updates and leverages ex-               However, many efforts are directed towards con-
+    isting medical LLMs and knowledge bases.                 structing unified multimodal medical large mod-
+    Extensive experimental evaluations conducted             els (Li et al., 2023; Thawakar et al., 2024; Deng
+    on a wide range of publicly accessible mul-              et al., 2024). While these models have shown
+    timodal medical datasets, incorporating text,            some progress in integrating multimodal informa-
+    image, audio, and video modalities, demon-               tion, they suffer from two limitations. Firstly, for
+    strate that MAM consistently surpasses the
+                                                             unified models, each knowledge update is cost, of-
+    performance of modality-specific LLMs. No-
+    tably, MAM achieves significant performance              ten requiring substantial computational resources
+    improvements ranging from 18% to 365% com-               to retrain the entire model. Secondly, unified mod-
+    pared to baseline models. Our code is released           els lack modularity and flexibility, necessitating
+    at https://github.com/yczhou001/MAM.                     a single model to exhibit sufficient performance
+1   Introduction                                             across various medical diagnostic tasks to satisfy
+                                                             demands. To explore the capabilities of existing
+Large Language Models (LLMs) have recently                   domain-specific LLMs, we conducted an empirical
+demonstrated remarkable reasoning capabilities               study. Our findings indicate that role assignment
+(Radford, 2018; OpenAI, 2023; Touvron et al.,                significantly enhances the diagnostic abilities of
+2023a; Yang et al., 2024; Zhang et al., 2023b;               LLMs, and LLMs possess the potential to discern
+Shao et al., 2024; Zhang et al., 2023a). Beyond              the correct diagnosis from multiple ones.
+demonstrating impressive language reasoning and                 To overcome the aforementioned limitations of
+generation capabilities, LLMs are expanded to pro-           unified multimodal medical LLMs and to better
+cess diverse modalities, e.g., images, audio, and            emulate the collaborative approach of human medi-
+   * Corresponding author. This work was supported by        cal teams, we propose the Multi-Agent Framework
+the National Natural Science Foundation of China (No.        for Multi-Modal Medical Diagnosis (MAM). In-
+624B2002) and the Jiangyin Hi-tech Industrial Development
+Zone under the Taihu Innovation Scheme (EF2025-00003-        stead of pursuing an “omnipotent” unified model,
+SKL-IOTSC).                                                  MAM framework decomposes the medical diag-
+                                                       25319
+                Findings of the Association for Computational Linguistics: ACL 2025, pages 25319–25333
+                       July 27 - August 1, 2025 ©2025 Association for Computational Linguistics
+nostic process into several specialized roles and        through dialogue, and MathChat is proposed as a
+designs LLM-based agents for each role. These            conversational problem-solving solution designed
+agents include: a General Practitioner agent respon-     for mathematical problems. In software engineer-
+sible for initial triage, a Specialist Team agent pro-   ing, the MAGIS (Tao et al., 2024) framework en-
+viding domain-expert opinions, a Radiologist agent       ables the collaboration of various agents in the
+specializing in medical image analysis, a Medical        planning and coding process to solve GITHUB
+Assistant agent aiding information retrieval and         problems. In the field of finance, inspired by the or-
+knowledge management, and a Director agent re-           ganizational structure of effective investment firms
+sponsible for coordinating and synthesizing diag-        in the real world, FinCon (Yu et al., 2024) is devel-
+nostic opinions. The core advantages of the MAM          oped to accomplish a variety of financial tasks.
+framework lie in its modular design and collabora-          The emergence of these LLM-based Multi-
+tive workflow. The modular agent design enables          Agent systems points to a common conclusion that
+more granular and efficient knowledge updates and        LLM-based Multi-Agents are well adapted for rea-
+model maintenance, without requiring global re-          soning (Zhao et al., 2024; Talebirad and Nadiri,
+training. The framework also allows MAM to eas-          2023; Wu et al., 2024; Tao et al., 2024), decision
+ily integrate and leverage various existing medical      making (Liu et al., 2023c; Yu et al., 2024), etc.
+models and specialized knowledge bases.                  This adaptability makes them essential in the medi-
+   In the experiments, we evaluate our MAM               cal domain where interdisciplinary knowledge and
+framework in multimodal medical diagnosis                multi-step problem solving are required.
+tasks through comprehensive experiments on
+several publicly available multimodal medical            2.2   Medical LLM
+datasets. Experimental results demonstrate that          Due to the remarkable performance of LLMs in
+the MAM framework consistently outperforms               different tasks (Zhang et al., 2023b; Shao et al.,
+specific-modal LLMs across various medical               2024; Zhang et al., 2023a), various medical LLMs
+datasets and data modalities. In addition, we con-       have been developed to solve a wide range of med-
+duct ablation studies, consistency analysis, and sen-    ical problems (Bao et al., 2023; Zhao et al., 2024;
+sitivity analyses regarding the number of discussion     Ye et al., 2023; Fleming et al., 2024). As a com-
+rounds and roles to gain deeper insights into the        prehensive solution, DISC-MedLLM (Bao et al.,
+roles of individual components and the operational       2023) utilizes LLM to deliver accurate and real-
+mechanisms of the framework.                             istic medical responses in end-to-end conversa-
+                                                         tional healthcare services. As the first LLaMA
+2   Related Work                                         based Chinese medical LLM, Zhongjing (Zhao
+                                                         et al., 2024) has implemented the training pipeline
+2.1 LLM-based Multi-Agent                                from continuous pre-training, SFT, to Reinforce-
+With the rapid advancement of LLMs, their applica-       ment Learning from Human Feedback (RLHF),
+tion across various tasks has become increasingly        where pre-training enhances medical knowledge
+widespread (Radford, 2018; OpenAI, 2023; Tou-            and RLHF further improves instruction compli-
+vron et al., 2023a; Yang et al., 2024; Zhang et al.,     ance and safety. Through a multi-stage training
+2023b; Shao et al., 2024; Zhang et al., 2023a; Zhou      approach that combines domain-specific continu-
+et al., 2025, 2024a). These LLMs, outstanding            ous pre-training (DCPT), SFT, and Direct Prefer-
+in natural language processing, have been widely         ence Optimization (DPO), Qilin-Med (Ye et al.,
+adapted to different tasks (Wang et al., 2024a;          2023) shows substantial performance gains as a
+Yue et al., 2024; Yang et al., 2024; Zhou et al.,        medical LLM.
+2024b; Hu et al., 2025). However, for relatively            Moreover, medical field is characterized by the
+complex tasks, the capabilities of a single LLM          presence of multimodal information, including di-
+may not achieve the desired effect. In order to          verse data types such as text, images, audios, etc.
+solve complex tasks beyond the function of a single      To make full use of these diverse data types, multi-
+LLM, LLM-based multi-agent systems are devel-            modal medical large models have been created (Li
+oped (Liu et al., 2023c; Zhao et al., 2024; Talebi-      et al., 2023; Thawakar et al., 2024; Deng et al.,
+rad and Nadiri, 2023). In (Wu et al., 2024), the         2024; Liu et al., 2023b; Chen et al., 2024). In
+author investigates the effectiveness of using LLM-      LLaVA-Med (Li et al., 2023), the authors propose
+based Multi-Agent to solve mathematical problems         a cost-effective way to train a visual language con-
+                                                    25320
+    Dataset                              Direct Assigned Roles      Dataset                              Expectation Reasoning
+    MedQA (Jin et al., 2020)             30.8    50.6 (+19.8)       MedQA (Jin et al., 2020)                46.9    49.3 (+2.4)
+    PubMedQA (Jin et al., 2019)          48.5    87.0 (+38.5)       PubMedQA (Jin et al., 2019)             54.0    72.6 (+18.6)
+    PathVQA (He et al., 2020)            40.1    46.6 (+6.5)        PathVQA (He et al., 2020)               50.0    91.7 (+41.7)
+    PMC-VQA (Zhang et al., 2023c)        24.0    29.0 (+5.0)        PMC-VQA (Zhang et al., 2023c)           41.7    62.5 (+20.8)
+    DeepLesion (Yan et al., 2017)        11.1    40.0 (+28.9)       DeepLesion (Yan et al., 2017)           52.5    57.5 (+5.0)
+    NIH (Wang et al., 2017)              12.6    50.7 (+38.1)       NIH (Wang et al., 2017)                 44.0    46.0 (+2.0)
+    Brain Tumor (Bhuvaji et al., 2020)   80.2    98.2 (+18.0)       Brain Tumor (Bhuvaji et al., 2020)      55.1    73.9 (+18.8)
+    Heartbeat (Bentley et al., 2011)     43.9    62.5 (+18.6)       Heartbeat (Bentley et al., 2011)        50.2    54.0 (+3.8)
+    SoundDr (Hoang et al., 2023)         25.0    45.4 (+20.4)       SoundDr (Hoang et al., 2023)            48.1    55.7 (+7.6)
+    MedVidQA (Gupta et al., 2022)        55.3    69.7 (+14.4)       MedVidQA (Gupta et al., 2022)           46.0    50.0 (+4.0)
+
+Table 1: Performance comparison of “Direct” and “Assigned          Table 2: LLM Diagnostic Discernment: Comparing Expected
+Roles” prompting methods across multi-modal medical tasks.         vs. Reasoning Accuracy. This table shows the performance
+The blue numbers indicate the performance improvement.             of LLMs in selecting the correct diagnosis from a set of plau-
+                                                                   sible alternatives. “Expectation” represents random selection
+                                                                   accuracy, while “Reasoning” reflects the LLM’s accuracy in
+                                                                   identifying the correct diagnosis.
+versational assistant that can answer open-ended re-
+search questions on biomedical images. In the task
+area of radiology, XrayGPT (Thawakar et al., 2024)                    Table 1 compares two prompting strategies: “Di-
+was developed, which is a new conversational med-                  rect” and “Assigned Roles”. The “Direct” is with-
+ical visual language model that can analyze and an-                out role assignment, while the “Assigned Roles”
+swer open-ended questions about chest radiographs.                 approach creates a physician role using a specific
+In the field of ophthalmology, OphGLM (Deng                        prompt (see Appendix B). The results indicate a
+et al., 2024) has built a large multimodal model of                consistent and significant performance improve-
+ophthalmology, contributing to the clinical applica-               ment across all datasets using the “Assigned Roles”
+tion of ophthalmology.                                             prompting strategy, with gains ranging from 5.0%
+                                                                   (PMC-VQA) to 38.5% (PubMedQA). This sug-
+3      Empirical Study                                             gests that role context enhances LLMs’ ability to
+3.1 The Significance of Assigned Roles in                          interpret and reason about medical data, improving
+    Medical Diagnosis with LLMs                                    diagnostic accuracy. Even in datasets with high
+                                                                   baseline performance (e.g., Brain Tumor), role as-
+Experimental Setting. We investigate the im-
+                                                                   signment provides a noticeable benefit. Further-
+pact of assigned roles on the performance of Large
+                                                                   more, role assignment is particularly effective for
+Language Models (LLMs) in multimodal medi-
+                                                                   tasks requiring deeper medical context and domain-
+cal diagnosis. Our experiments leverage a diverse
+                                                                   specific knowledge.
+collection of publicly available medical datasets,
+encompassing text, image, audio, and video modal-
+                                                                   3.2   LLMs’ Capability to Discern Correct
+ities. Specifically, we utilize the following datasets:
+                                                                         Reasoning Outcomes
+Brain Tumor (Bhuvaji et al., 2020) (394 cases),
+DeepLesion (Yan et al., 2017) (225 cases), Heart-                  To evaluate the reasoning capabilities of LLMs,
+beat (Bentley et al., 2011) (461 cases), MedQA                     we designed an experiment to assess their ability to
+(Jin et al., 2020) (200 cases), MedVidQA (Gupta                    identify the correct diagnosis from a set of plausible
+et al., 2022) (284 cases), NIH Chest X-rays (Wang                  alternatives. Using the “Assigned Roles” prompt-
+et al., 2017) (215 cases), PathVQA (He et al., 2020)               ing strategy, we generated three diagnostic outputs
+(200 cases), PMC-VQA (Zhang et al., 2023c) (200                    for each instance in the datasets. The datasets were
+cases), PubMedQA (Jin et al., 2019) (200 cases),                   pre-filtered to include only instances where at least
+and SoundDr (Hoang et al., 2023) (240 cases). We                   one of the three diagnoses was correct, establish-
+use these datasets to evaluate the capabilities of                 ing a baseline “Expectation” representing random
+LLMs in handling multimodal medical diagnos-                       selection accuracy. The “Reasoning” column in
+tic tasks. We emploly Qwen-Audio-Chat (Chu                         Table 2 reflects the LLMs’ accuracy in explicitly
+et al., 2023) for audio tasks, Medichat-Llama3-                    selecting the correct diagnosis from three generated
+8B (sethuiyer, 2024) for text tasks, HuatuoGPT-                    options. Results show that the “Reasoning” accu-
+Vision-7B (Chen et al., 2024) for image tasks, and                 racy consistently exceeds the “Expectation” across
+VideoLLaMA2-7B (Cheng et al., 2024b) for video                     all datasets, with improvements ranging from 2.0%
+tasks. LLMs can assign roles in input prompts.                     (NIH) to 41.7% (PathVQA). This demonstrates
+                                                                25321
+      Multimodal Medical Input      General Practitioner                                   Specialist Team
+                                                           Type Classification                               Medical Issue Segmentation/
+
+                                                           Referral to Specialist                               Data Anonymization
+
+
+                                                                                                                                   Medical
+                                                                                                                                   Assistant
+       Diagnosis
+                                  Max 3 Rounds                                      Meeting/Debate
+
+                                     Summary
+                                      Report                              Diagnostic Opinion
+                                                                                                                   Search within the database
+                                                                         Diagnostic Opinion
+    Summary Report
+
+                                      Summary                             Diagnostic Opinion
+                                       Report
+
+     Final
+    Answer                                                                                                           Summary of
+                                                                                    Summary Report
+                                                                                                                     Search Results
+
+
+
+                         Figure 1: Overview of our MAM Framework for multi-modal medical diagnosis.
+
+
+that LLMs possess reasoning capabilities beyond                                In our framework, multi-modal medical inputs
+random selection, particularly in complex visual                            are initially directed to the General Practitioner,
+question answering tasks like PathVQA and PMC-                              who performs disease classification and subse-
+VQA. The consistent positive delta across datasets                          quently refers the case to the relevant Specialist
+indicates LLMs’ potential to evaluate and refine                            Team. The Specialist Teams will decompose and
+their outputs to identify accurate conclusions.                             anonymize the medical problem. The Medical As-
+                                                                            sistant then retrieves and summarizes pertinent in-
+4    Method                                                                 formation from medical databases based on the
+                                                                            decomposed problem. Subsequently, the Direc-
+Based on our preliminary empirical studies, we ob-                          tor orchestrates discussions among the Specialist
+served that augmenting Large Language Models                                Team, where each specialist presents their diagnos-
+(LLMs) with specific medical roles significantly en-                        tic opinion. The Director then synthesizes these
+hances their diagnostic performance. Furthermore,                           opinions and the database summaries into a com-
+LLMs demonstrate a notable capacity to reason and                           prehensive report. The Specialist Team reviews this
+synthesize correct diagnoses from diverse diagnos-                          report and votes on whether to endorse it. In cases
+tic opinions. Inspired by these findings, we pro-                           of disagreement, the process iteratively re-enters
+pose the Multi-Agent Medical (MAM) framework,                               the Specialist Team discussion phase. Otherwise,
+shown in Figure 1. This framework aims to trans-                            upon reaching a consensus, the Director derives the
+form multi-modal medical diagnosis into a collabo-                          final diagnosis based on the synthesized report.
+rative endeavor, thereby amplifying the diagnostic
+capabilities of existing models. It comprises five                          4.1     Doctor Agent Role Design
+key roles, each embodied by an LLM-based agent,                                 General Practitioner The General Practi-
+working synergistically within a defined workflow:                          tioner agent is designed to mimic the role of a
+① General Practitioner: Responsible for initial                             primary care physician in a clinical setting. Upon
+Disease Type Classification and Referral to Special-                        receiving multi-modal medical inputs, this agent is
+ist. ② Specialist Team: Charged with providing                              responsible for the initial triage, performing Dis-
+Diagnostic Opinions on specific medical conditions                          ease Type Classification to categorize the medical
+and actively participating in discussions. ③ Radi-                          case. Crucially, it then determines the appropriate
+ologist: Tasked with analyzing medical images and                           Referral to Specialist, directing cases to the relevant
+contributing to diagnostic discussions. ④ Medical                           Specialist Team based on the initial classification.
+Assistant: Responsible for retrieving and summa-
+rizing relevant medical information from databases.                              Specialist Team The Specialist Team is com-
+⑤ Director: Synthesizes discussion reports and                              posed of multiple agents, each representing a spe-
+reviews the quality of medical diagnoses.                                   cialist in a specific medical domain. These agents
+                                                                    25322
+are tasked with providing Diagnostic Opinions rele-      {s1 , s2 , ..., sn } for referral. This referral process
+vant to their expertise. They engage in discussions,     can be represented by:
+sharing their perspectives and interpretations of
+the medical case. Furthermore, Specialist Team                                S = RG (d)                     (2)
+members participate in a voting process to reach a       where RG is the referral function by agent G, and
+consensus on the synthesized diagnostic report.          S is the set of specialist agents si .
+     Radiologist The Radiologist agent special-          Problem Decomposition and Anonymization:
+izes in the interpretation of medical images, such       The Specialist Team S receives the medical case
+as X-rays and CT scans. Its primary responsibility       and decomposes the problem into a set of sub-
+is to analyze these images and provide imaging-          problems P = {p1 , p2 , ..., pm }. Anonymization
+based insights to the other agents. The Radiologist      is performed concurrently. This decomposition is
+communicates with the Specialist Team and the            represented by:
+Director, offering expertise in image analysis to aid
+in diagnosis and treatment planning.                                         P = DS (M )                     (3)
+     Medical Assistant The Medical Assistant             where DS is the problem decomposition function
+agent plays a crucial role in information manage-        by Specialist Team S.
+ment. Its responsibilities include processing med-
+ical data to facilitate retrieval of relevant informa-   Information Retrieval: The Medical Assistant
+tion from medical databases. Furthermore, the            agent (A) utilizes the decomposed problem P to
+Medical Assistant summarizes the retrieved infor-        retrieve relevant medical information. Let Ir repre-
+mation, providing concise summaries.                     sent the retrieved information, obtained through:
+
+     Director The Director agent serves as the or-                        Ir = RetrieveA (P )                (4)
+chestrator and synthesizer within the MAM frame-
+                                                         where RetrieveA is the information retrieval func-
+work. This agent is responsible for reviewing the di-
+                                                         tion by agent A. Since we do not have access to a
+agnostic opinions provided by the Specialist Team
+                                                         real hospital database, the retrieval process is con-
+and the Radiologist. It synthesizes the discussion
+                                                         ducted using the Google API. The query used for re-
+outcomes from the Specialist Team into a com-
+                                                         trieval is based on the decomposed and anonymized
+prehensive report. Crucially, the Director derives
+                                                         problem P , ensuring no privacy leakage. A then
+the final diagnosis based on the synthesized report,
+                                                         summarizes the retrieved information into a con-
+specifically when a consensus is reached among
+                                                         cise summary Is :
+the Specialist Team through voting.
+                                                                        Is = SummarizeA (Ir )                (5)
+4.2 Collaborative Diagnosis Process
+The MAM framework orchestrates a collaborative           where SummarizeA is the summarization function
+diagnostic process initiated upon receiving multi-       by agent A.
+modal medical inputs. Let M = {m1 , m2 , ..., mk }
+                                                         Diagnostic Opinion Generation and Discussion:
+represent the multi-modal medical input, where mi
+                                                         Each specialist si ∈ S and the Radiologist agent
+denotes the i-th modality.
+                                                         (Rad) independently generate their diagnostic opin-
+Initial Triage and Referral: The General Prac-           ions based on the multi-modal input M , and the
+titioner agent (G) receives the multi-modal input        information summary Is . Let Osi be the diagnostic
+M . G performs Disease Type Classification to cat-       opinion of specialist si and ORad be the opinion of
+egorize the medical case into a disease type d. This     the Radiologist. Opinions are generated through:
+can be represented as:
+                                                                    Osi = Diagsi (M, Is )     ∀si ∈ S        (6)
+                          G
+                   d = C (M )                     (1)             ORad = Diag    Rad
+                                                                                       (M )                  (7)
+
+where C G denotes the disease type classification        where Diagsi and DiagRad are the diagnostic opin-
+function performed by agent G.                           ion generation functions for specialist si and Ra-
+   Based on the classified disease type d, G de-         diologist Rad, respectively. The Director agent
+termines the appropriate Specialist Team S =             (Dir) orchestrates a discussion.
+                                                    25323
+Algorithm 1 Consensus and Iteration Process                Method                                 MedQA PubMedQA
+ 1: while No Consensus do                                  LLaMA-7B (Touvron et al., 2023b)        18.6   37.2
+                                                           DAPT-7B (Gururangan et al., 2020)       25.7   44.1
+ 2:   Specialist Team S and Radiologist Rad                MedAlpaca-7B (Han et al., 2023)         29.3   51.2
+      present and discuss diagnostic opinions              AdaptLLM-7B (Cheng et al., 2024a)       30.5   56.8
+                                                           LLaMA-3-8B (AI@Meta, 2024)              29.6   43.6
+      {Osi }si ∈S and ORad .                               Medichat-Llama3-8B (sethuiyer, 2024)    30.8   48.5
+ 3:   Director Dir synthesizes a report Rp =               MAM                                     40.0   84.0
+      SynthDir ({Osi }si ∈S , ORad , Is ).
+ 4:   Specialist Team S reviews report Rp .            Table 3: Performance comparison of different LLMs on text-
+                                                       based medical datasets.
+ 5:   for each specialist si ∈ S do
+ 6:      Specialist si votes vi ∈ {0, 1} on endors-
+         ing Rp .                                      5      Experiments
+ 7:   end for
+ 8:   Calculate total endorsement votes V =
+      P                                                5.1      Setup
+         n
+         i=1 vi .
+ 9:   if V == n then                                   Text-based Evaluation. For text-based evalua-
+10:      Consensus Reached ← True.                     tion, we used MedQA (Jin et al., 2020) and Pub-
+11:   else                                             MedQA (Jin et al., 2019). We selected 200 En-
+12:      Consensus Reached ← False.                    glish four-option multiple-choice questions from
+13:   end if                                           MedQA (Jin et al., 2020) and 200 question-answer
+14: end while                                          pairs from PubMedQA (Jin et al., 2019). We com-
+15: return Consensus Reached                           pared MAM against LLMs: LLaMA-7B (Touvron
+                                                       et al., 2023b), DAPT-7B (Gururangan et al., 2020),
+                                                       MedAlpaca-7B (Han et al., 2023), AdaptLLM-7B
+Report Synthesis and Review: The Director              (Cheng et al., 2024a), LLaMA-3-8B (AI@Meta,
+agent (Dir) synthesizes the diagnostic opinions        2024), and Medichat-Llama3-8B (sethuiyer, 2024).
+{Os1 , Os2 , ..., Osn , ORad } and the information
+summary Is into a comprehensive diagnostic re-         Image-based Evaluation. For image evaluation,
+port Rp . This synthesis is performed by:              we used Brain Tumor (Bhuvaji et al., 2020) (test
+                                                       set, 394 cases), DeepLesion (Yan et al., 2017) (225
+      Rp = SynthDir ({Osi }si ∈S , ORad , Is )   (8)   cases from 9 categories), NIH Chest X-rays (Wang
+                                                       et al., 2017) (215 cases), PathVQA (He et al., 2020)
+where SynthDir is the synthesis function by agent      (200 cases), and PMC-VQA (Zhang et al., 2023c)
+Dir. The Specialist Team S reviews Rp and votes        (200 pairs). Compared LVLMs include LLaVA-7B
+on endorsement. Let vi ∈ {0, 1} be the vote of         (Liu et al., 2023a), Qwen2-VL-7B (Wang et al.,
+specialist si .                                        2024b), LLaVA-Med-7B (Li et al., 2023), Qilin-
+                                                       Med-VL-13B (Liu et al., 2023b), and HuatuoGPT-
+Consensus and Iteration: The P     Director agent      Vision-7B (Chen et al., 2024).
+                                     n
+checks for consensus. Let V =        i=1 vi be the
+total endorsement votes. If V = n (assuming n =        Audio-based Evaluation. For audio evaluation,
+3 in your algorithm description seems to be a typo,    we used Heartbeat (Bentley et al., 2011) (clini-
+it should be consensus of all specialists which is     cal trial data, 461 instances) and SoundDr (Hoang
+V = n), consensus is reached.                          et al., 2023) (240 instances). MAM is compared
+                                                       with Qwen-Audio-Chat (Chu et al., 2023).
+Final Diagnosis Derivation: Upon reaching con-
+sensus, the Director agent derives the final diagno-   Video-based Evaluation. For video evaluation,
+sis Df inal based on Rp . This is performed by:        we used MedVidQA (Temporal Segment Prediction
+                                                       test set, 284 data points (Gupta et al., 2022)). We
+           Df inal = DiagnosisDir (Rp )          (9)   preprocessed it into yes/no questions using original
+                                                       and alternative video segments. MAM is compared
+where DiagnosisDir is the diagnosis derivation         with video-LLMs: LLaVA-Next-Video-7B (Zhang
+function by agent Dir. Df inal is the output of        et al., 2024), Qwen2-VL-7B (Wang et al., 2024b),
+the MAM framework.                                     and VideoLLaMA2-7B (Cheng et al., 2024b).
+                                                  25324
+ Method                                  Pa PMC DL NIH BT                Method                                       MedVidQA
+ LLaVA-7B (Liu et al., 2023a)             7.3    6.2    2.6 4.2 34.6
+ Qwen2-VL-7B (Wang et al., 2024b)        29.5   10.6    3.6 6.3 52.6     LLaVA-Next-Video-7B (Zhang et al., 2024)         51.5
+ LLaVA-Med-7B (Li et al., 2023)          36.3   19.8   8.5 9.2 73.7      Qwen2-VL-7B (Wang et al., 2024b)                 54.8
+ Qilin-Med-VL-13B (Liu et al., 2023b)    39.2   22.5   11.3 11.4 80.6    VideoLLaMA2-7B (Cheng et al., 2024b)             55.3
+ HuatuoGPT-Vision-7B (Chen et al., 2024) 40.1   24.0   11.1 12.6 80.2    MAM                                              74.3
+ MAM                                     47.6   32.5   35.1 58.6 97.9
+
+                                                                        Table 6: Performance comparison of different video-LLMs
+Table 4: Performance comparison of different LVLMs on                   on the Video-based medical dataset.
+various image-based medical datasets.“Pa”, “PMC”, “BT” and
+“DL” denote “PathVQA”, “PMC-VQA”, “Brain Tumor” and
+“DeepLesion”.                                                               Dataset       Direct +Roles +Discussion +Retrival
+                                                                                      Incrementally Added Function →
+Method                                    Heartbeat SoundDr
+                                                                            MedQA         30.8    31.0        32.5         40.0
+Qwen-Audio-Chat (Chu et al., 2023)              34.9         25.0           PubMedQA      48.5    69.5        77.0         84.0
+MAM                                             64.0         47.9           PathVQA       40.1    46.0        47.0         47.6
+                                                                            PMC-VQA       24.0    26.0        32.0         32.5
+Table 5: Performance comparison of audio-LLMs on audio-                     DeepLesion    11.1    33.8        34.7         35.1
+based medical datasets.                                                     NIH           12.6    36.0        38.6         58.6
+                                                                            Brain Tumor   80.2    92.4        97.0         97.9
+                                                                            Heartbeat     34.9    35.1        49.5         64.0
+                                                                            SoundDr       25.0    32.9        43.3         47.9
+5.2 Main Results                                                            MedVidQA      55.3    58.0        60.6         74.3
+Our comprehensive experiments across text, im-
+age, audio, and video medical data demonstrate                          Table 7: Ablation study of our MAM framework. The “Direct”
+                                                                        represents the baseline. From left to right, we incrementally
+the superior performance of the MAM framework.                          add functions. “+Retrieval” is our full MAM framework.
+As shown in Table 3-6, MAM consistently outper-
+forms strong competitors across all modalities and
+achieves significant performance improvements                           tegrating agent roles (+Roles), inter-agent discus-
+ranging from 18% to 365% compared to baseline                           sion (+Discussion), and information retrieval (+Re-
+models. For text-based medical question answer-                         trieval), representing the complete MAM frame-
+ing (Table 3), MAM significantly surpasses base-                        work. The results reveal consistent performance
+line LLMs on MedQA and PubMedQA datasets,                               improvements across all datasets as each compo-
+demonstrating enhanced medical text understand-                         nent is added. The introduction of agent roles
+ing. In image-based diagnosis (Table 4), MAM                            (+Roles) shows significant gains over the baseline,
+achieves top accuracy across PathVQA, PMC-                              emphasizing the value of role specialization. En-
+VQA, DeepLesion, NIH Chest X-rays, and Brain                            abling discussion (+Discussion) further enhances
+Tumor datasets, with particularly substantial gains                     performance, demonstrating the benefits of collab-
+on DeepLesion and NIH Chest X-rays. Audio-                              orative reasoning. Most notably, the full MAM
+based results on Heartbeat and SoundDr datasets                         framework (+Retrieval) achieves the highest per-
+(Table 5) show MAM’s clear advantage over audio-                        formance, highlighting the synergistic effects of
+LLM baselines in medical audio interpretation. For                      role specialization, collaborative discussion, and
+video-based medical question answering on Med-                          information retrieval. The substantial improvement
+VidQA (Table 6), MAM achieves leading accuracy,                         from “+Discussion” to “+Retrieval” underscores
+outperforming all video-LLM competitors. These                          the critical role of the Medical Assistant in enhanc-
+results collectively demonstrate MAM’s efficacy                         ing diagnostic accuracy through relevant medical
+in multi-modal medical diagnosis, highlighting the                      knowledge. These findings confirm the efficacy of
+benefits of its collaborative multi-agent approach.                     each MAM component and their combined impact
+                                                                        on multi-modal medical diagnosis.
+5.3 Ablation Study
+                                                                        5.4    Consistency
+To evaluate the contribution of each component
+in the MAM framework, we conducted an abla-                             To evaluate the MAM framework’s behavior, we
+tion study, with results shown in Table 7. The                          analyzed its prediction consistency compared to
+study systematically assesses the impact of incre-                      the “Direct” approach. Consistency is defined as
+mentally adding key functionalities, starting from                      the percentage of instances where MAM’s final
+a baseline “Direct” approach (using the baseline                        prediction aligns with a correct prediction from
+LLM directly for diagnosis) and progressively in-                       the “Direct” method. This metric assesses MAM’s
+                                                                    25325
+ Dataset                              Consistency MAM
+ MedQA (Jin et al., 2020)               34.4     40.0
+ PubMedQA (Jin et al., 2019)            74.2     84.0
+ PathVQA (He et al., 2020)              50.0     47.6
+ PMC-VQA (Zhang et al., 2023c)          14.6     32.5
+ DeepLesion (Yan et al., 2017)          12.0     35.1
+ NIH (Wang et al., 2017)                59.3     58.6
+ Brain Tumor (Bhuvaji et al., 2020)     97.5     97.9
+ Heartbeat (Bentley et al., 2011)       70.2     64.0
+ SoundDr (Hoang et al., 2023)           60.0     47.9
+ MedVidQA (Gupta et al., 2022)          67.5     74.3
+
+Table 8: Consistency of prediction results from baseline
+(Direct) and MAM. Rows with lighter cyan color indicate    Figure 2: Performance with different times of discussion
+datasets where MAM has relatively lower performance.       (≤ 3) in our MAM pipeline across various datasets.
+
+
+ability to retain and reinforce correct baseline pre-
+dictions while correcting errors. Table 8 compares
+the consistency scores with MAM’s overall per-
+formance across datasets. Results indicate a posi-
+tive correlation between MAM’s performance and
+consistency. For instance, datasets, where MAM
+performs well, show high consistency, suggesting
+MAM effectively builds on the “Direct” method’s
+correct predictions. In contrast, datasets with lower
+performance, such as PMC-VQA and DeepLesion
+lower consistency. This implies that when the              Figure 3: Performance with different number of roles in our
+“Direct” achieves lower accuracy, MAM may in-              MAM pipeline across various datasets.
+troduce changes that slightly reduce consistency
+with the original correct predictions. Nevertheless,       cessive rounds introduce noise or dilute accurate
+MAM generally outperforms the “Direct” method              initial opinions. Limiting discussions can balance
+overall, as shown in Table 7 and Table 8, indicating       collaborative benefits and avoid over-discussion.
+that its refinements enhance diagnostic accuracy
+despite occasional deviations from the baseline’s          5.6   Impact of Role Number
+correct predictions. This demonstrates that MAM            We investigate the effect of role granularity by vary-
+actively improves predictions through its collabora-       ing the number of agents in MAM (Figure 3). Per-
+tive, knowledge-augmented framework rather than            formance generally followed an inverted U-shape:
+merely replicating the “Direct” approach.                  increasing roles from 1 (“Direct”) to 3 significantly
+                                                           improved results, highlighting the benefit of role
+5.5 Discussion Time and Performance                        specialization. However, further increasing to 5
+We investigated the impact of iterative discussions        roles led to a performance decrease across datasets.
+on diagnostic accuracy by evaluating performance           This suggests an optimal level of role granular-
+across different discussion rounds, as illustrated in      ity exists. While role specialization is beneficial,
+Figure 2. For Brain Tumor, performance improved            excessive roles may introduce redundancy or over-
+in early rounds, indicating that iterative discussions     head, hindering diagnosis. A moderately special-
+enhance accuracy for complex cases. However, ex-           ized framework with 3 roles appears to strike a
+tending discussions beyond a few rounds did not            better balance than either a single-agent approach
+consistently yield further gains. For MedQA and            or an overly complex multi-agent system, indicat-
+PathVQA, performance fluctuated, with peak ac-             ing that streamlined role specialization is crucial
+curacy often achieved within the first two or three        for effective collaborative medical diagnosis.
+rounds. PMC-VQA experienced a performance de-
+cline in the final round, suggesting potential over-       5.7   Recall of Retrieval
+fitting or dataset-specific issues. Results imply that     To evaluate the Medical Assistant’s information re-
+while initial discussions can refine diagnoses, ex-        trieval module, we first measured recall, defined as
+                                                        25326
+  Dataset                            Recall Answer Correct       it generates three expert roles to engage in up to
+  DeepLesion (Yan et al., 2017)      31.7         53.4           three rounds of dialogue to discuss potential solu-
+  Heartbeat (Bentley et al., 2011)   34.0         58.8           tions. Concurrently, the Medical Assistant formu-
+  NIH (Wang et al., 2017)            12.1         46.2
+                                                                 lates queries for web retrieval. After processing
+Table 9: “Recall” indicates the proportion of instances where
+                                                                 the retrieved data, the Director reviews the discus-
+the retrieved content includes the correct answer. “Answer       sion and retrieval records, synthesizes the insights
+Correct” represents the accuracy of the final answer under the   into a summary, and presents it to the expert team
+retrieved content that encompasses the correct answer.
+                                                                 for voting. The Director then uses the voting re-
+                                                                 sults and summary to make the final diagnosis. As
+the proportion of retrieved medical documents con-               shown in the process discussed in Figure 4, it is
+taining information necessary to correctly answer                evident that although not all expert roles prioritized
+diagnostic questions. As shown in Table 9, recall                the correct answer initially, the structured approach
+varies across datasets, ranging from 12.1% for NIH               of discussions and voting leads to an accurate res-
+to 34.0% for Heartbeat. These results indicate that              olution, which demonstrates effectiveness of our
+while the module retrieves relevant information in               framework, demonstrating its ability of decision-
+some cases, significant improvement is needed. Im-               making in complex medical scenarios.
+perfect recall may stem from limitations in retrieval
+algorithms, incomplete medical databases, or chal-               6   Conclusion
+lenges in formulating effective search queries for
+                                                                 This study introduces the Multi-Agent Framework
+diverse medical questions. Enhancing recall is crit-
+                                                                 for Multi-Modal Medical Diagnosis (MAM), ad-
+ical for ensuring the availability of necessary infor-
+                                                                 dressing the limitations of unified multimodal med-
+mation for downstream diagnostic tasks.
+                                                                 ical LLMs. MAM employs a modular, collabo-
+5.8 Impact from Retrieval Content                                rative approach, assigning specialized roles, i.e.,
+                                                                 General Practitioner, Specialist Team, Radiologist,
+Complementary to evaluating retrieval recall, we
+                                                                 Medical Assistant, and Director, to distinct LLM-
+examined the impact of retrieved content on di-
+                                                                 based agents. This structure enhances knowledge
+agnostic accuracy by calculating the conditional
+                                                                 updates, leverages specialized expertise, and adapts
+probability of obtaining a correct answer when the
+                                                                 to diverse medical tasks and modalities. Extensive
+retrieved documents contained the necessary infor-
+                                                                 evaluations on multimodal medical datasets demon-
+mation. This metric, labeled “Answer Correct” in
+                                                                 strate MAM’s superiority, outperforming modality-
+Table 9, assesses the MAM framework’s ability
+                                                                 specific LLMs by 18% to 365%. Future work will
+to leverage retrieved information effectively. As
+                                                                 integrate advanced knowledge retrieval and evalu-
+shown in Table 9, the “Answer Correct” is consis-
+                                                                 ate MAM in real-world clinical settings.
+tently higher than the corresponding accuracy of
+the “+Discussion” (without retrieval) in Table 7.                Limitations
+For instance, in the NIH dataset, the “Answer Cor-
+rect” (46.2%) significantly surpasses the “Discus-               The performance of MAM is fundamentally con-
+sion” (38.6%). It demonstrates that when relevant                strained by the capabilities of the underlying LLMs
+information is retrieved, the MAM framework is                   utilized for each agent role. Inherent limitations
+more likely to arrive at a correct diagnosis. How-               such as model biases, knowledge gaps, or reason-
+ever, the “Answer Correct” is not perfect, demon-                ing inaccuracies within these LLMs may propagate
+strating the importance of improving retrieval and               through the framework, potentially compromising
+LLM’s reasoning capabilities.                                    diagnostic outcomes. MAM’s architecture allows
+                                                                 for flexible switching of base models, which could
+5.9 Case Study                                                   mitigate some limitations in future applications.
+Figure 4 shows a case of multimodal input from                   The other limitation of the current study is the
+DeepLesion, comparing the outputs from the base-                 absence of real-world clinical validation, which
+line and our framework. The baseline model pro-                  presents substantial challenges in terms of resource
+duced incorrect results, whereas our framework                   allocation and human expertise required for com-
+delivered correct predictions. Our framework be-                 prehensive evaluation. We acknowledge this lim-
+gins by identifying the input modality and deter-                itation and propose to address it through clinical
+mining the data type. Based on this information,                 validation studies in our future work.
+                                                            25327
+References                                                     Symposium on Educational Advances in Artificial
+                                                               Intelligence, EAAI 2014, February 20-27, 2024, Van-
+AI@Meta. 2024. Llama 3 model card.                             couver, Canada, pages 22021–22030. AAAI Press.
+Zhijie Bao, Wei Chen, Shengze Xiao, Kuang Ren, Jiaao        Deepak Gupta, Kush Attal, and Dina Demner-Fushman.
+  Wu, Cheng Zhong, Jiajie Peng, Xuanjing Huang, and           2022. A dataset for medical instructional video
+  Zhongyu Wei. 2023. Disc-medllm: Bridging gen-               classification and question answering.    CoRR,
+  eral large language models and real-world medical           abs/2201.12888.
+  consultation. CoRR, abs/2308.14346.
+                                                            Suchin Gururangan, Ana Marasovic, Swabha
+P. Bentley, G. Nordehn, M. Coimbra, and S. Mannor.            Swayamdipta, Kyle Lo, Iz Beltagy, Doug Downey,
+   2011. The PASCAL Classifying Heart Sounds Chal-            and Noah A. Smith. 2020. Don’t stop pretraining:
+   lenge 2011 (CHSC2011) Results.                             Adapt language models to domains and tasks. In
+                                                              Proceedings of the 58th Annual Meeting of the
+Sartaj Bhuvaji, Ankita Kadam, Prajakta Bhumkar,
+                                                              Association for Computational Linguistics, ACL
+  Sameer Dedge, and Swati Kanchan. 2020. Brain
+                                                              2020, Online, July 5-10, 2020, pages 8342–8360.
+  tumor classification (mri).
+                                                              Association for Computational Linguistics.
+Junying Chen, Ruyi Ouyang, Anningzhe Gao, Shunian           Tianyu Han, Lisa C. Adams, Jens-Michalis Papaioan-
+  Chen, Guiming Hardy Chen, Xidong Wang, Ruifei               nou, Paul Grundmann, Tom Oberhauser, Alexander
+  Zhang, Zhenyang Cai, Ke Ji, Guangjun Yu, Xiang              Löser, Daniel Truhn, and Keno K. Bressem. 2023.
+  Wan, and Benyou Wang. 2024. Huatuogpt-vision,               Medalpaca - an open-source collection of medical
+  towards injecting medical visual knowledge into mul-        conversational AI models and training data. CoRR,
+  timodal llms at scale. CoRR, abs/2406.19280.                abs/2304.08247.
+Daixuan Cheng, Shaohan Huang, Ziyu Zhu, Xintong             Xuehai He, Yichen Zhang, Luntian Mou, Eric P. Xing,
+  Zhang, Wayne Xin Zhao, Zhongzhi Luan, Bo Dai,               and Pengtao Xie. 2020. Pathvqa: 30000+ ques-
+  and Zhenliang Zhang. 2024a. On domain-specific              tions for medical visual question answering. CoRR,
+  post-training for multimodal large language models.         abs/2003.10286.
+  CoRR, abs/2411.19930.
+                                                            Truong V. Hoang, Quang H. Nguyen, Cuong Q. Nguyen,
+Zesen Cheng, Sicong Leng, Hang Zhang, Yifei Xin, Xin          Phong X. Nguyen, and Hoang D. Nguyen. 2023.
+  Li, Guanzheng Chen, Yongxin Zhu, Wenqi Zhang,               Sound-dr: Reliable sound dataset and baseline ar-
+  Ziyang Luo, Deli Zhao, and Lidong Bing. 2024b.              tificial intelligence system for respiratory illnesses.
+  Videollama 2: Advancing spatial-temporal model-             Preprint, arXiv:2201.04581.
+  ing and audio understanding in video-llms. CoRR,
+  abs/2406.07476.                                           He Hu, Yucheng Zhou, Juzheng Si, Qianning Wang,
+                                                              Hengheng Zhang, Fuji Ren, Fei Ma, and Laizhong
+Yunfei Chu, Jin Xu, Xiaohuan Zhou, Qian Yang, Shil-           Cui. 2025. Beyond empathy: Integrating diagnos-
+  iang Zhang, Zhijie Yan, Chang Zhou, and Jingren             tic and therapeutic reasoning with large language
+  Zhou. 2023. Qwen-audio: Advancing universal                 models for mental health counseling. arXiv preprint
+  audio understanding via unified large-scale audio-          arXiv:2505.15715.
+  language models. CoRR, abs/2311.07919.
+                                                            Di Jin, Eileen Pan, Nassim Oufattole, Wei-Hung Weng,
+Zhuo Deng, Weihao Gao, Chucheng Chen, Zhiyuan Niu,            Hanyi Fang, and Peter Szolovits. 2020. What dis-
+  Zheng Gong, Ruiheng Zhang, Zhenjie Cao, Fang                ease does this patient have? A large-scale open do-
+  Li, Zhaoyi Ma, Wenbin Wei, and Lan Ma. 2024.                main question answering dataset from medical exams.
+  Ophglm: An ophthalmology large language-and-                CoRR, abs/2009.13081.
+  vision assistant. Artif. Intell. Medicine, 157:103001.
+                                                            Qiao Jin, Bhuwan Dhingra, Zhengping Liu, William W.
+Scott L. Fleming, Alejandro Lozano, William J.                Cohen, and Xinghua Lu. 2019. Pubmedqa: A
+  Haberkorn, Jenelle A. Jindal, Eduardo Pontes Reis,          dataset for biomedical research question answering.
+  Rahul Thapa, Louis Blankemeier, Julian Z. Genk-             In Proceedings of the 2019 Conference on Empiri-
+  ins, Ethan Steinberg, Ashwin Nayak, Birju S. Patel,         cal Methods in Natural Language Processing and
+  Chia-Chun Chiang, Alison Callahan, Zepeng Huo,              the 9th International Joint Conference on Natural
+  Sergios Gatidis, Scott J. Adams, Oluseyi Fayanju,           Language Processing, EMNLP-IJCNLP 2019, Hong
+  Shreya J. Shah, Thomas Savage, Ethan Goh, Ak-               Kong, China, November 3-7, 2019, pages 2567–2577.
+  shay S. Chaudhari, Nima Aghaeepour, Christopher D.          Association for Computational Linguistics.
+  Sharp, Michael A. Pfeffer, Percy Liang, Jonathan H.
+  Chen, Keith E. Morse, Emma P. Brunskill, Jason A.         Chunyuan Li, Cliff Wong, Sheng Zhang, Naoto
+  Fries, and Nigam H. Shah. 2024. Medalign: A                 Usuyama, Haotian Liu, Jianwei Yang, Tristan Nau-
+  clinician-generated dataset for instruction following       mann, Hoifung Poon, and Jianfeng Gao. 2023. Llava-
+  with electronic medical records. In Thirty-Eighth           med: Training a large language-and-vision assistant
+  AAAI Conference on Artificial Intelligence, AAAI            for biomedicine in one day. In Advances in Neural
+  2024, Thirty-Sixth Conference on Innovative Applica-        Information Processing Systems 36: Annual Confer-
+  tions of Artificial Intelligence, IAAI 2024, Fourteenth     ence on Neural Information Processing Systems 2023,
+                                                       25328
+  NeurIPS 2023, New Orleans, LA, USA, December 10            and efficient foundation language models. CoRR,
+  - 16, 2023.                                                abs/2302.13971.
+
+Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae       Hugo Touvron, Louis Martin, Kevin Stone, Peter Al-
+  Lee. 2023a. Visual instruction tuning. In Advances        bert, Amjad Almahairi, Yasmine Babaei, Nikolay
+  in Neural Information Processing Systems 36: An-          Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti
+  nual Conference on Neural Information Processing          Bhosale, Dan Bikel, Lukas Blecher, Cristian Canton-
+  Systems 2023, NeurIPS 2023, New Orleans, LA, USA,         Ferrer, Moya Chen, Guillem Cucurull, David Esiobu,
+  December 10 - 16, 2023.                                   Jude Fernandes, Jeremy Fu, Wenyin Fu, Brian Fuller,
+                                                            Cynthia Gao, Vedanuj Goswami, Naman Goyal, An-
+Junling Liu, Ziming Wang, Qichen Ye, Dading Chong,          thony Hartshorn, Saghar Hosseini, Rui Hou, Hakan
+  Peilin Zhou, and Yining Hua. 2023b. Qilin-med-            Inan, Marcin Kardas, Viktor Kerkez, Madian Khabsa,
+  vl: Towards chinese large vision-language model for       Isabel Kloumann, Artem Korenev, Punit Singh Koura,
+  general healthcare. CoRR, abs/2310.17956.                 Marie-Anne Lachaux, Thibaut Lavril, Jenya Lee, Di-
+                                                            ana Liskovich, Yinghai Lu, Yuning Mao, Xavier Mar-
+Zijun Liu, Yanzhe Zhang, Peng Li, Yang Liu, and Diyi        tinet, Todor Mihaylov, Pushkar Mishra, Igor Moly-
+   Yang. 2023c. Dynamic llm-agent network: An llm-          bog, Yixin Nie, Andrew Poulton, Jeremy Reizen-
+   agent collaboration framework with agent team opti-      stein, Rashi Rungta, Kalyan Saladi, Alan Schelten,
+   mization. CoRR, abs/2310.02170.                          Ruan Silva, Eric Michael Smith, Ranjan Subrama-
+                                                            nian, Xiaoqing Ellen Tan, Binh Tang, Ross Tay-
+OpenAI. 2023. GPT-4 technical report.           CoRR,       lor, Adina Williams, Jian Xiang Kuan, Puxin Xu,
+  abs/2303.08774.                                           Zheng Yan, Iliyan Zarov, Yuchen Zhang, Angela Fan,
+Alec Radford. 2018. Improving language understanding        Melanie Kambadur, Sharan Narang, Aurélien Ro-
+  by generative pre-training.                               driguez, Robert Stojnic, Sergey Edunov, and Thomas
+                                                            Scialom. 2023b. Llama 2: Open foundation and
+sethuiyer.     2024.        Medichat-llama3-8b.             fine-tuned chat models. CoRR, abs/2307.09288.
+   https://huggingface.co/sethuiyer/                      Ke Wang, Houxing Ren, Aojun Zhou, Zimu Lu, Sichun
+   Medichat-Llama3-8B.    Built upon LLaMa-3                Luo, Weikang Shi, Renrui Zhang, Linqi Song,
+   architecture.                                            Mingjie Zhan, and Hongsheng Li. 2024a. Mathcoder:
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu,             Seamless code integration in llms for enhanced math-
+  Junxiao Song, Mingchuan Zhang, Y. K. Li, Y. Wu,           ematical reasoning. In The Twelfth International
+  and Daya Guo. 2024. Deepseekmath: Pushing the             Conference on Learning Representations, ICLR 2024,
+  limits of mathematical reasoning in open language         Vienna, Austria, May 7-11, 2024. OpenReview.net.
+  models. CoRR, abs/2402.03300.                           Peng Wang, Shuai Bai, Sinan Tan, Shijie Wang, Zhi-
+                                                            hao Fan, Jinze Bai, Keqin Chen, Xuejing Liu, Jialin
+Yashar Talebirad and Amirhossein Nadiri. 2023. Multi-       Wang, Wenbin Ge, Yang Fan, Kai Dang, Mengfei
+  agent collaboration: Harnessing the power of intelli-     Du, Xuancheng Ren, Rui Men, Dayiheng Liu,
+  gent LLM agents. CoRR, abs/2306.03314.                    Chang Zhou, Jingren Zhou, and Junyang Lin. 2024b.
+Wei Tao, Yucheng Zhou, Yanlin Wang, Wenqiang                Qwen2-vl: Enhancing vision-language model’s per-
+ Zhang, Hongyu Zhang, and Yu Cheng. 2024.                   ception of the world at any resolution. CoRR,
+ MAGIS: llm-based multi-agent framework for github          abs/2409.12191.
+ issue resolution. In Advances in Neural Information      Xiaosong Wang, Yifan Peng, Le Lu, Zhiyong Lu, Mo-
+ Processing Systems 38: Annual Conference on Neu-           hammadhadi Bagheri, and Ronald M. Summers.
+ ral Information Processing Systems 2024, NeurIPS           2017. Chestx-ray8: Hospital-scale chest x-ray
+ 2024, Vancouver, BC, Canada, December 10 - 15,             database and benchmarks on weakly-supervised clas-
+ 2024.                                                      sification and localization of common thorax diseases.
+                                                            In 2017 IEEE Conference on Computer Vision and
+Omkar Chakradhar Thawakar, Abdelrahman M.
+                                                            Pattern Recognition, CVPR 2017, Honolulu, HI, USA,
+ Shaker, Sahal Shaji Mullappilly, Hisham Cholakkal,
+                                                            July 21-26, 2017, pages 3462–3471. IEEE Computer
+ Rao Muhammad Anwer, Salman H. Khan, Jorma
+                                                            Society.
+ Laaksonen, and Fahad Khan. 2024. Xraygpt:
+ Chest radiographs summarization using large medical      Yiran Wu, Feiran Jia, Shaokun Zhang, Hangyu Li,
+ vision-language models. In Proceedings of the 23rd         Erkang Zhu, Yue Wang, Yin Tat Lee, Richard Peng,
+ Workshop on Biomedical Natural Language Process-           Qingyun Wu, and Chi Wang. 2024. Mathchat: Con-
+ ing, BioNLP@ACL 2024, Bangkok, Thailand, August            verse to tackle challenging math problems with LLM
+ 16, 2024, pages 440–448. Association for Computa-          agents. In ICLR 2024 Workshop on Large Language
+ tional Linguistics.                                        Model (LLM) Agents.
+Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier     Ke Yan, Xiaosong Wang, Le Lu, and Ronald M. Sum-
+  Martinet, Marie-Anne Lachaux, Timothée Lacroix,           mers. 2017. Deeplesion: Automated deep mining,
+  Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal        categorization and detection of significant radiology
+  Azhar, Aurélien Rodriguez, Armand Joulin, Edouard         image findings using large-scale clinical lesion anno-
+  Grave, and Guillaume Lample. 2023a. Llama: Open           tations. CoRR, abs/1710.01766.
+                                                     25329
+Songhua Yang, Hanjie Zhao, Senbin Zhu, Guangyu             Yuanhan Zhang, Bo Li, haotian Liu, Yong jae Lee,
+  Zhou, Hongfei Xu, Yuxiang Jia, and Hongying Zan.           Liangke Gui, Di Fu, Jiashi Feng, Ziwei Liu, and
+  2024. Zhongjing: Enhancing the chinese medical ca-         Chunyuan Li. 2024. Llava-next: A strong zero-shot
+  pabilities of large language model through expert          video understanding model.
+  feedback and real-world multi-turn dialogue. In
+  Thirty-Eighth AAAI Conference on Artificial Intel-       Andrew Zhao, Daniel Huang, Quentin Xu, Matthieu Lin,
+  ligence, AAAI 2024, Thirty-Sixth Conference on In-         Yong-Jin Liu, and Gao Huang. 2024. Expel: LLM
+  novative Applications of Artificial Intelligence, IAAI     agents are experiential learners. In Thirty-Eighth
+  2024, Fourteenth Symposium on Educational Ad-              AAAI Conference on Artificial Intelligence, AAAI
+  vances in Artificial Intelligence, EAAI 2014, Febru-       2024, Thirty-Sixth Conference on Innovative Applica-
+  ary 20-27, 2024, Vancouver, Canada, pages 19368–           tions of Artificial Intelligence, IAAI 2024, Fourteenth
+  19376. AAAI Press.                                         Symposium on Educational Advances in Artificial
+                                                             Intelligence, EAAI 2014, February 20-27, 2024, Van-
+Qichen Ye, Junling Liu, Dading Chong, Peilin Zhou,           couver, Canada, pages 19632–19642. AAAI Press.
+  Yining Hua, and Andrew Liu. 2023. Qilin-med:
+  Multi-stage knowledge injection advanced medical         Yucheng Zhou, Xiang Li, Qianning Wang, and Jian-
+  large language model. CoRR, abs/2310.09089.                bing Shen. 2024a. Visual in-context learning for
+                                                             large vision-language models. In Findings of the As-
+Yangyang Yu, Zhiyuan Yao, Haohang Li, Zhiyang Deng,          sociation for Computational Linguistics, ACL 2024,
+  Yuechen Jiang, Yupeng Cao, Zhi Chen, Jordan W. Su-         Bangkok, Thailand and virtual meeting, August 11-
+  chow, Zhenyu Cui, Rong Liu, Zhaozhuo Xu, Denghui           16, 2024, pages 15890–15902. Association for Com-
+  Zhang, Koduvayur Subbalakshmi, Guojun Xiong,               putational Linguistics.
+  Yueru He, Jimin Huang, Dong Li, and Qianqian
+  Xie. 2024. Fincon: A synthesized LLM multi-agent         Yucheng Zhou, Jianbing Shen, and Yu Cheng. 2025.
+  system with conceptual verbal reinforcement for en-        Weak to strong generalization for large language mod-
+  hanced financial decision making. In Advances in           els with multi-capabilities. In The Thirteenth Inter-
+  Neural Information Processing Systems 38: Annual           national Conference on Learning Representations,
+  Conference on Neural Information Processing Sys-           ICLR 2025, Singapore, April 24-28, 2025. OpenRe-
+  tems 2024, NeurIPS 2024, Vancouver, BC, Canada,            view.net.
+  December 10 - 15, 2024.
+                                                           Yucheng Zhou, Jihai Zhang, Guanjie Chen, Jianbing
+Shengbin Yue, Shujun Liu, Yuxuan Zhou, Chenchen              Shen, and Yu Cheng. 2024b. Less is more: Vision
+  Shen, Siyuan Wang, Yao Xiao, Bingxuan Li, Yun              representation compression for efficient video gener-
+  Song, Xiaoyu Shen, Wei Chen, Xuanjing Huang,               ation with large language models.
+  and Zhongyu Wei. 2024. Lawllm: Intelligent legal
+  system with legal reasoning and verifiable retrieval.
+  In Database Systems for Advanced Applications -
+  29th International Conference, DASFAA 2024, Gifu,
+  Japan, July 2-5, 2024, Proceedings, Part V, volume
+  14854 of Lecture Notes in Computer Science, pages
+  304–321. Springer.
+
+Hang Zhang, Xin Li, and Lidong Bing. 2023a. Video-
+  llama: An instruction-tuned audio-visual language
+  model for video understanding. In Proceedings of
+  the 2023 Conference on Empirical Methods in Nat-
+  ural Language Processing, EMNLP 2023 - System
+  Demonstrations, Singapore, December 6-10, 2023,
+  pages 543–553. Association for Computational Lin-
+  guistics.
+
+Hongbo Zhang, Junying Chen, Feng Jiang, Fei Yu,
+  Zhihong Chen, Guiming Chen, Jianquan Li, Xi-
+  angbo Wu, Zhiyi Zhang, Qingying Xiao, Xiang Wan,
+  Benyou Wang, and Haizhou Li. 2023b. Huatuogpt,
+  towards taming language model to be a doctor. In
+  Findings of the Association for Computational Lin-
+  guistics: EMNLP 2023, Singapore, December 6-10,
+  2023, pages 10859–10885. Association for Computa-
+  tional Linguistics.
+
+Xiaoman Zhang, Chaoyi Wu, Ziheng Zhao, Weixiong
+  Lin, Ya Zhang, Yanfeng Wang, and Weidi Xie. 2023c.
+  PMC-VQA: visual instruction tuning for medical
+  visual question answering. CoRR, abs/2305.10415.
+                                                      25330
+A    Case Study                                                       - Assess Patient’s Health: Evaluate patient’s function
+                                                                       and overall health.
+Figure 4 shows the comparison results between the                     - Use {modality_type} Studies: Utilize expertise in
+baseline model and our framework under the same                        the {disease_type} domains to diagnose diseases.
+                                                                      - Analyze Patient History and Symptoms: Determine
+sample input from DeepLesion (Yan et al., 2017)                        the cause and severity of diseases by analyzing pa-
+dataset.                                                               tient’s medical history and symptoms.
+
+B    Prompt
+                                                                      Get Discuss Prompt
+    Image Type Classification Prompt                                  You are a {role_name}, responsible for the follow-
+                                                                      ing tasks: {role_responsibilities}. Please thought-
+    1.Please answer with a single word: What kind of                  fully express your views for the following question.
+    medical image is this? X-Ray, CT, MRI, Pathology,                 Input:
+    Biomedical.                                                       **Question type**: {disease_type}.
+    2.Please answer with a single word: What part of the              **Question**: {question}.
+    human body does this image show? Brain, bone, ab-                 Example output:
+    domen, mediastinum, liver, lung, kidney, soft tissue,             **Assessment Steps**:
+    pelvis.                                                           - Initial Assessment: [Provide a detailed overview of
+                                                                      the initial assessment process]
+                                                                      - Diagnostic Studies (e.g., imaging, lab tests): [In-
+    Audio Type Classification Prompt                                  clude relevant details about any studies conducted]
+                                                                      - Additional Considerations: [Mention any other per-
+    Please answer with a single word: What kind of audio              tinent factors or evaluations]
+    is this? Cardiovascular, Respiratory.                             **Possible Answers**:
+                                                                      - Answer 1: [Briefly explain answer 1]
+                                                                      Reasoning: [Briefly describe the corresponding rea-
+    Video Type Classification Prompt                                  son for answer 1]
+                                                                      - Answer 2: [Briefly explain answer 2]
+    Please answer with a single word: What kind of video              Reasoning: [Briefly describe the corresponding rea-
+    is this? Sports, Rehabilitation, Emergency.                       son for answer 2]
+                                                                      - Answer 3: [Briefly explain answer 3]
+                                                                      Reasoning: [Briefly describe the corresponding rea-
+                                                                      son for answer 3]
+    Text Type Classification Prompt                                   **Conclusion**: [Summarize the findings and pro-
+                                                                      vide a final recommendation or insight]
+    System prompt: You are given a question, please
+    select a question type according to the given question.
+    Input: The question is {question_text}. Which
+    kind of question is this? Anaesthesia, Anatomy, Bio-              Get Summarize Prompt
+    chemistry, Dental, ENT, FM, O&G, Medicine, Mi-
+    crobiology, Ophthalmology, Orthopaedics, Pathol-                  You are a specialized doctor serving as the moderator
+    ogy, Pediatrics, Pharmacology, Physiology, Psychia-               of this meeting. Please provide a detailed summary
+    try, Radiology, Skin, PSM, Surgery, Unknown.                      of the discussions that have taken place.
+    Output example:                                                   Example output:
+    The question type is **Anaesthesia**.                             **Possible Answers**:
+                                                                      - Answer 1: [Briefly explain answer 1]
+                                                                      - Answer 2: [Briefly explain answer 2]
+                                                                      - Answer 3: [Briefly explain answer 3]
+    Role Generation Prompt                                            **Agreements**:
+                                                                      - [Description of any agreements reached]
+    Given a disease type, generate a system prompt that               **Disagreements**:
+    assigns tasks to relevant medical roles, including                - [Description of any disagreements that were noted]
+    **Specialist Doctor**, **Radiologic Technologist**,               **Conclusions**:
+    etc, from the perspective of a General Practitioner.              - [Final thoughts or conclusions drawn from the dis-
+    Input: The modality type is {modality_type}, the                  cussion]
+    disease type is {disease_type}, and the patient ques-             Input: The question is {question}. The previous
+    tion is {question}.                                               discussion of the meeting includes: {discussion}.
+    Output:
+    A system prompt that:
+    Identifies the relevant Specialist Doctor(s), Radio-
+    logic Technologist(s), and other Specialist(s) for the            Get Vote Prompt
+    given disease type.
+    Assigns tasks to each identified role, specifying the             You are a {role_name}, responsible for the follow-
+    necessary actions, tests, or examinations required for            ing tasks: {role_responsibilities}.
+    diagnosis and treatment.                                          Please answer just using "yes" or "no" according to
+    Output example:                                                   the following questions and the corresponding sum-
+    **Specialist Doctor** (Pulmonologist):                            mery and the contents of the given file(if any).
+
+
+                                                              25331
+Input: The question is {question}, and the summery
+of the discussion is:
+{summary}
+Do you agree with the summery above? Please an-
+swer just using "yes" or "no".
+
+
+Get Review Prompt
+Question: Is there any medical reasoning errors, re-
+dundant statements, or invalid outputs in the follow-
+ing paragraph?
+Please answer just using "yes" or "no".
+Please read the rollowing paragraph:
+{dis}
+
+
+Get Multimodal Description Prompt
+
+Please describe this {modality_type} briefly in 100
+words:
+
+
+Get Search Summarize Prompt
+Please summarize the following search results briefly
+in 200 words: {search_result}
+
+
+Get Diagnosis Prompt
+Input: Based on the provided image/video/audio (if
+applicable) and the meeting record, please provide
+answer to the following question.
+Question: {ques}.
+Meeting record: {record}.
+
+
+Get Overall Review Prompt
+Input: You’re a medical assistant. Please check
+whether the answer to this question is reasonable,
+if it is, please answer "yes", if not, please answer
+"no".
+Question: {ques}.
+Answer: {record}.
+
+
+
+
+                                                        25332
+                                    Example output of baseline model:
+
+                          Multimodal Input                                                      Diagnosis
+             Question: Please select one of the following labels that
+             best describes the lesion: bone, abdomen, mediastinum,                       Answer: soft tissue
+             liver, lung, kidney, soft tissue, pelvis
+
+                                  Example output of our framework:
+                                                         General
+      Multimodal Medical Input              Modality:    Practitioner
+         Question: Please select one of the Image                     Referral to Specialist
+            following labels that best describes
+            the lesion: bone, abdomen,                                                                                 Medical
+            mediastinum, liver, lung, kidney,                                      Type: CT
+            soft tissue, pelvis                                                                                        Assistant
+
+
+                           Meeting/Debate                                                    Specialist Team
+
+
+                Diagnostic Opinion
+                                                          Director of Review
+ **Assessment Steps:**
+- Initial Assessment: The image provided is a cross-sectional view of the
+thoracic region, showing structures such as lungs and mediastinum.
+- Diagnostic Studies (e.g., imaging): This appears to be an axial CT scan
+slice through the chest at the level of the heart and great vessels.
+**Possible Answers:**
+1. Mediastinum:                                                                                     Summary of Search
+  - Reasoning: The lesion in question seems located centrally within the                            Results
+thorax between the two lung fields, which corresponds with the anatomical
+location of the mediastinum on this type of imaging study.                       1.Pulmonary Embolism (PE): This article discusses
+2. Lung:                                                                         PE, a condition where a blood clot (thrombus) blocks
+  - Reasoning: …                                                                 blood flow in the lung arteries. It highlights the
+                                                                                 complications arising from ...
+                                                                                 2.Major Aortopulmonary Collateral Arteries
+                                                                                 (MAPCAs): This article focuses on MAPCAs, which
+              Diagnostic Opinion                                                 are congenital blood vessels connecting the aorta to
+                                                                                 the pulmonary vascular system…
+ **Assessment Steps**:                                     Director of Review    3.Lung Metastases Imaging: This overview highlights
+                                                                                 the frequency of pulmonary metastasis, which occurs
+- Initial Assessment: The image provided is a cross-sectional CT scan of the
+                                                                                 in 20-54% of extrathoracic malignancies…
+thorax, focusing on the lungs.
+- Diagnostic Studies (e.g., imaging): This appears to be an axial slice from a
+chest computed tomography (CT) scan with contrast enhancement.
+- Additional Considerations: No other specific information or clinical
+context has been given.                                                                              Summary Report
+**Possible Answers**:
+1. Lung
+                                                                                   **Possible Answers**:
+  Reasoning: The lesion in question is located within one of the lung fields
+                                                                                   - Answer 1: The image provided is a cross-
+as seen in this transverse section of the thoracic cavity.
+                                                                                   sectional CT scan of the chest, showing both
+2. Mediastinum
+                                                                                   lungs and part of the mediastinum. The…
+  Reasoning: …
+                                                                                   - Answer 2: ...
+                                                                                   - Answer 3: ...
+                                                                                   - Answer 4: ...
+                Diagnostic Opinion                                                 **Agreements**:
+                                                                                   - The majority of the participants agreed that
+                                                          Director of Review
+**Assessment Steps**:                                                              the lesion in question is located within the
+- Initial Assessment: The image provided is a cross-sectional CT scan of the       mediastinum.
+chest, showing both lungs and part of the mediastinum.                             **Disagreements**:
+- Diagnostic Studies (e.g., imaging): This appears to be an axial slice from a     - Some participants suggested that the lesion
+computed tomography (CT) scan focusing on the thoracic region.                     could be located within the lung tissue itself,
+Based on this analysis:                                                            while others thought it might be a soft tissue
+**Possible Answers**:                                                              lesion.
+1. **Mediastinum**:                                                                **Conclusions**:
+  - Reasoning: The lesion in question seems located centrally within the           - Based on the analysis, the most appropriate
+chest cavity between the two lung fields, which corresponds with the               label describing the lesion present in the sample
+anatomical location of the mediastinum where structures such as lymph              falls under 'mediastinum'. It suggests potential
+nodes are commonly found.                                                          involvement of lymphatic or other mediastinal
+2. **Lung**:                                                                       structures, warranting further investigation
+  - Reasoning: …                                                                   through clinical correlation and potentially
+                                                                                   additional imaging studies.
+
+
+
+
+                                                                                                      Summary
+               Diagnosis                                                                               Report
+
+
+      Final Answer:
+                                     Summary Report
+      mediastinum
+
+
+
+                                                     Figure 4: Case Study.
+
+                                                                25333
+

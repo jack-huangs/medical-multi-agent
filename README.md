@@ -71,17 +71,7 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-flash
 ```
 
-请只在本机环境中设置真实 `DEEPSEEK_API_KEY`。不要把 API key 写入 README、脚本、提交记录或聊天消息。如果旧密钥已经出现在聊天中，应立即在 DeepSeek 控制台撤销并轮换。
-
-PowerShell 临时设置示例：
-
-```powershell
-$env:DEEPSEEK_API_KEY = '...'
-$env:DEEPSEEK_BASE_URL = 'https://api.deepseek.com'
-$env:DEEPSEEK_MODEL = 'deepseek-flash'
-```
-
-不要把上面的占位符替换为真实密钥后提交。
+程序只读取项目根目录的 `.env` 文件，不读取系统环境变量。请只在该文件中保存真实 `DEEPSEEK_API_KEY`；`.gitignore` 会忽略它。不要把 API key 写入 README、脚本、提交记录或聊天消息。如果旧密钥已经出现在聊天中，应立即在 DeepSeek 控制台撤销并轮换。
 
 ## 数据与运行
 
@@ -102,4 +92,18 @@ python main.py --model deepseek-flash --dataset medqa --difficulty adaptive --nu
 Pop-Location
 ```
 
-运行结果会写入 `external/MDAgents/output/`；根目录 `.gitignore` 已忽略 `.env`、`.venv`、`data/`、`output/`、`runs/`、`results/` 和 `logs/` 等本地实验产物。
+若需要在命令行显示每一次模型调用的进度，并保存完整的提示词、回复和耗时，追加 `--verbose`：
+
+```powershell
+python main.py --model deepseek-flash --dataset medqa --difficulty basic --num_samples 1 --verbose
+```
+
+运行结果会写入 `external/MDAgents/output/`。每次运行会生成：
+
+- `{model}_{dataset}_{difficulty}.json`：最新一轮的简化结果文件，每次同配置运行会更新它；
+- `{model}_{dataset}_{difficulty}_{day-time}.json`：本轮结果的完整归档，时间戳避免覆盖历史实验；
+- `{model}_{dataset}_{difficulty}_{day-time}_trace.jsonl`：本轮逐次 Agent 调用的结构化追踪日志。日志不包含 API key。
+
+例如，15 日 14:30:25 开始的基础 MedQA 实验会先生成 `deepseek-flash_medqa_basic.json`，再归档为 `deepseek-flash_medqa_basic_15-143025.json`，并写入对应的 `_trace.jsonl` 日志。
+
+根目录 `.gitignore` 已忽略 `.env`、`.venv`、`data/`、`output/`、`runs/`、`results/` 和 `logs/` 等本地实验产物。

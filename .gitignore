@@ -12,6 +12,7 @@ __pycache__/
 # Experiment data and generated outputs
 data/
 output/
+external/MDAgents/output/
 runs/
 results/
 logs/

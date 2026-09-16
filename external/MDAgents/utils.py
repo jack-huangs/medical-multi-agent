@@ -1,30 +1,90 @@
-import os
 import json
 import random
+import time
+from itertools import count
+from pathlib import Path
 from tqdm import tqdm
 from prettytable import PrettyTable 
 from termcolor import cprint
 from pptree import Node
 import google.generativeai as genai
 from openai import OpenAI
+from dotenv import dotenv_values
 from pptree import *
+
+# 所有凭据仅从项目根目录的 .env 文件读取，不会读取或修改系统环境变量。
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ENV_FILE = PROJECT_ROOT / '.env'
+CONFIG = dotenv_values(ENV_FILE)
+TRACE_LOGGER = None
+AGENT_IDS = count(1)
+
+
+class TraceLogger:
+    """Write one structured, secret-free event per line for a single experiment."""
+
+    def __init__(self, path, verbose=False):
+        self.path = Path(path)
+        self.verbose = verbose
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text('', encoding='utf-8')
+
+    def emit(self, event, **fields):
+        record = {
+            'event': event,
+            **fields,
+        }
+        with self.path.open('a', encoding='utf-8') as file:
+            file.write(json.dumps(record, ensure_ascii=False) + '\n')
+
+        if self.verbose:
+            role = fields.get('role', '')
+            agent_id = fields.get('agent_id', '')
+            duration = fields.get('duration_seconds')
+            summary = f"[TRACE] {event} {agent_id} {role}".strip()
+            if duration is not None:
+                summary += f" ({duration:.2f}s)"
+            print(summary)
+
+
+def configure_trace_log(path, verbose=False):
+    """Enable detailed run logging without ever recording API keys."""
+    global TRACE_LOGGER
+    TRACE_LOGGER = TraceLogger(path, verbose=verbose)
+    TRACE_LOGGER.emit('trace_started', trace_file=str(Path(path).resolve()))
+
+
+def trace_event(event, **fields):
+    if TRACE_LOGGER is not None:
+        TRACE_LOGGER.emit(event, **fields)
+
+
+def config_value(name, default=None):
+    """Return a non-empty value from the project .env file only."""
+    value = CONFIG.get(name)
+    if value:
+        return value
+    if default is not None:
+        return default
+    raise RuntimeError(f"Missing {name} in {ENV_FILE}")
+
 
 # 这些模型共用 OpenAI 的 Chat Completions 调用格式；DeepSeek 通过兼容接口接入。
 OPENAI_COMPAT_MODELS = ['gpt-3.5', 'gpt-4', 'gpt-4o', 'gpt-4o-mini', 'deepseek-flash']
 
 def openai_compatible_client(model_info):
-    """按模型类型建立客户端；密钥始终从环境变量读取，避免写进源码。"""
+    """按模型类型建立客户端；密钥只从项目 .env 读取。"""
     if model_info == 'deepseek-flash':
         return OpenAI(
-            api_key=os.environ['DEEPSEEK_API_KEY'],
-            base_url=os.environ.get('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'),
+            api_key=config_value('DEEPSEEK_API_KEY'),
+            base_url=config_value('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'),
         )
-    return OpenAI(api_key=os.environ['openai_api_key'])
+    return OpenAI(api_key=config_value('OPENAI_API_KEY'))
 
 def resolve_model_name(model_info):
     """把命令行使用的简称转换为服务端实际需要的模型名。"""
     if model_info == 'deepseek-flash':
-        return os.environ.get('DEEPSEEK_MODEL', 'deepseek-flash')
+        return config_value('DEEPSEEK_MODEL', 'deepseek-flash')
     if model_info == 'gpt-3.5':
         return 'gpt-3.5-turbo'
     if model_info in ['gpt-4', 'gpt-4o', 'gpt-4o-mini']:
@@ -38,6 +98,7 @@ class Agent:
     system prompt、角色身份和 messages 历史，因此会以不同“专家视角”作答。
     """
     def __init__(self, instruction, role, examplers=None, model_info='gpt-4o-mini', img_path=None):
+        self.agent_id = f"agent-{next(AGENT_IDS)}"
         self.instruction = instruction
         self.role = role
         self.model_info = model_info
@@ -58,6 +119,53 @@ class Agent:
                     self.messages.append({"role": "user", "content": exampler['question']}) #用户的提问
                     self.messages.append({"role": "assistant", "content": exampler['answer'] + "\n\n" + exampler['reason']}) #模型先前的回答
 
+        trace_event(
+            'agent_created',
+            agent_id=self.agent_id,
+            role=self.role,
+            model_info=self.model_info,
+            instruction=self.instruction,
+        )
+
+    def _complete(self, message, temperature=None):
+        """Make one OpenAI-compatible call and emit request, response, or error events."""
+        model_name = resolve_model_name(self.model_info)
+        request_fields = {
+            'agent_id': self.agent_id,
+            'role': self.role,
+            'model_info': self.model_info,
+            'message': message,
+            'history_messages': len(self.messages),
+        }
+        if temperature is not None:
+            request_fields['temperature'] = temperature
+        trace_event('model_request', **request_fields)
+
+        started_at = time.perf_counter()
+        try:
+            request = {'model': model_name, 'messages': self.messages}
+            if temperature is not None:
+                request['temperature'] = temperature
+            response = self.client.chat.completions.create(**request)
+        except Exception as error:
+            trace_event(
+                'model_error',
+                **request_fields,
+                error_type=type(error).__name__,
+                error_message=str(error),
+                duration_seconds=time.perf_counter() - started_at,
+            )
+            raise
+
+        content = response.choices[0].message.content
+        trace_event(
+            'model_response',
+            **request_fields,
+            response=content,
+            duration_seconds=time.perf_counter() - started_at,
+        )
+        return content
+
     def chat(self, message, img_path=None, chat_mode=True):
         """发送一轮普通对话，并将模型回答写回该 Agent 的历史。"""
 
@@ -65,15 +173,9 @@ class Agent:
             # 先记住用户输入，再连同全部历史一起发给模型，形成“持续对话”。
             self.messages.append({"role": "user", "content": message})
             
-            model_name = resolve_model_name(self.model_info)
-
-            response = self.client.chat.completions.create(
-                model=model_name,
-                messages=self.messages
-            )
-
-            self.messages.append({"role": "assistant", "content": response.choices[0].message.content})
-            return response.choices[0].message.content
+            content = self._complete(message)
+            self.messages.append({"role": "assistant", "content": content})
+            return content
 
     def temp_responses(self, message, img_path=None):
         """temperature 越低，回答越稳定、越保守；越高，回答越有变化和创造性。"""
@@ -84,14 +186,7 @@ class Agent:
             
             responses = {}
             for temperature in temperatures:
-                model_info = resolve_model_name(self.model_info)
-                response = self.client.chat.completions.create(
-                    model=model_info,
-                    messages=self.messages,
-                    temperature=temperature,
-                )
-                
-                responses[temperature] = response.choices[0].message.content
+                responses[temperature] = self._complete(message, temperature=temperature)
                 
             return responses
         
@@ -112,8 +207,18 @@ class Group:
         self.examplers = examplers
 
     def interact(self, comm_type, message=None, img_path=None):
-        """执行团队内部协作。external 分支尚未实现，当前主要使用 internal。"""
+        """执行团队内部协作。
+
+        ``message`` 是前序团队留下的上下文报告。高级题流程会把它传给
+        后续 MDT，使团队能够在已有调查结论上继续分析，而不是重复从原题开始。
+        """
         if comm_type == 'internal':
+            previous_reports = (message or '').strip()
+            previous_context = (
+                "\n\nReports from previous medical teams:\n"
+                f"{previous_reports}"
+                if previous_reports else ""
+            )
             lead_member = None
             assist_members = []
             # 优先选择角色名含 Lead 的成员做组长；没有时用第一个成员兜底。
@@ -133,7 +238,11 @@ class Group:
             for a_mem in assist_members:
                 delivery_prompt += "\n{}".format(a_mem.role)
             
-            delivery_prompt += "\n\nNow, given the medical query, provide a short answer to what kind investigations are needed from each assistant clinicians.\nQuestion: {}".format(self.question)
+            delivery_prompt += (
+                "\n\nNow, given the medical query, provide a short answer to what "
+                "kind investigations are needed from each assistant clinicians."
+                f"{previous_context}\nQuestion: {self.question}"
+            )
             try:
                 delivery = lead_member.chat(delivery_prompt)
             except:
@@ -142,7 +251,15 @@ class Group:
             # 第二步：每名助理从自己的专业角色出发，完成并返回调查摘要。
             investigations = []
             for a_mem in assist_members:
-                investigation = a_mem.chat("You are in a medical group where the goal is to {}. Your group lead is asking for the following investigations:\n{}\n\nPlease remind your expertise and return your investigation summary that contains the core information.".format(self.goal, delivery))
+                investigation_prompt = (
+                    f"You are in a medical group where the goal is to {self.goal}. "
+                    "Your group lead is asking for the following investigations:\n"
+                    f"{delivery}{previous_context}\n\n"
+                    f"Medical query:\n{self.question}\n\n"
+                    "Please remind your expertise and return your investigation summary "
+                    "that contains the core information."
+                )
+                investigation = a_mem.chat(investigation_prompt)
                 investigations.append([a_mem.role, investigation])
             
             gathered_investigation = ""
@@ -151,9 +268,22 @@ class Group:
 
             # 第三步：把所有调查结果交回组长；若有示例题，也一并提供。
             if self.examplers is not None:
-                investigation_prompt = f"""The gathered investigation from your asssitant clinicians is as follows:\n{gathered_investigation}.\n\nNow, after reviewing the following example cases, return your answer to the medical query among the option provided:\n\n{self.examplers}\nQuestion: {self.question}"""
+                investigation_prompt = (
+                    "The gathered investigation from your assistant clinicians is as "
+                    f"follows:\n{gathered_investigation}.\n"
+                    f"{previous_context}\n"
+                    "Now, after reviewing the following example cases, return your "
+                    "answer to the medical query among the option provided:\n\n"
+                    f"{self.examplers}\nQuestion: {self.question}"
+                )
             else:
-                investigation_prompt = f"""The gathered investigation from your asssitant clinicians is as follows:\n{gathered_investigation}.\n\nNow, return your answer to the medical query among the option provided.\n\nQuestion: {self.question}"""
+                investigation_prompt = (
+                    "The gathered investigation from your assistant clinicians is as "
+                    f"follows:\n{gathered_investigation}.\n"
+                    f"{previous_context}\n"
+                    "Now, return your answer to the medical query among the option "
+                    f"provided.\n\nQuestion: {self.question}"
+                )
 
             response = lead_member.chat(investigation_prompt)
 
@@ -223,7 +353,7 @@ def parse_group_info(group_info):
 def setup_model(model_name):
     """验证模型类别并创建对应客户端；不在这里发送实际推理请求。"""
     if 'gemini' in model_name:
-        genai.configure(api_key=os.environ['genai_api_key'])
+        genai.configure(api_key=config_value('GENAI_API_KEY'))
         return genai, None
     elif model_name in OPENAI_COMPAT_MODELS:
         client = openai_compatible_client(model_name)
@@ -232,17 +362,18 @@ def setup_model(model_name):
         raise ValueError(f"Unsupported model: {model_name}")
 
 def load_data(dataset):
-    """从相对路径读取 test.jsonl（待答题）和 train.jsonl（示例题）。"""
+    """Read test and prompt-example data from the project-level data directory."""
     test_qa = []
     examplers = []
 
-    test_path = f'../data/{dataset}/test.jsonl'
-    with open(test_path, 'r') as file:
+    dataset_dir = PROJECT_ROOT / 'data' / dataset
+    test_path = dataset_dir / 'test.jsonl'
+    with open(test_path, 'r', encoding='utf-8') as file:
         for line in file:
             test_qa.append(json.loads(line))
 
-    train_path = f'../data/{dataset}/train.jsonl'
-    with open(train_path, 'r') as file:
+    train_path = dataset_dir / 'train.jsonl'
+    with open(train_path, 'r', encoding='utf-8') as file:
         for line in file:
             examplers.append(json.loads(line))
 
@@ -521,9 +652,7 @@ def process_advanced_query(question, model, args):
         group_instance = Group(res_gs['group_goal'], res_gs['members'], question, model_info=model)
         group_instances.append(group_instance)
 
-    # 先运行名称含 initial/IAP 的团队，组成初始评估报告。
-    # STEP 2. initial assessment from each group
-    # STEP 2.1. IAP Process
+    # STEP 2.1. Initial Assessment: 先运行名称含 initial/IAP 的团队。
     initial_assessments = []
     for group_instance in group_instances:
         if 'initial' in group_instance.goal.lower() or 'iap' in group_instance.goal.lower():
@@ -534,37 +663,53 @@ def process_advanced_query(question, model, args):
     for idx, init_assess in enumerate(initial_assessments):
         initial_assessment_report += f"Group {idx+1} - {init_assess[0]}\n{init_assess[1]}\n\n"
 
-    # 再运行其余 MDT；它们的报告会先单独汇总，便于观察团队输出。
-    # STEP 2.2. other MDTs Process
+    # STEP 2.2. Specialist MDTs: 非初始、非最终审查团队读取初始评估报告。
     assessments = []
     for group_instance in group_instances:
-        if 'initial' not in group_instance.goal.lower() and 'iap' not in group_instance.goal.lower():
-            assessment = group_instance.interact(comm_type='internal')
+        goal = group_instance.goal.lower()
+        is_initial = 'initial' in goal or 'iap' in goal
+        is_review = 'review' in goal or 'decision' in goal or 'frdt' in goal
+        if not is_initial and not is_review:
+            assessment = group_instance.interact(
+                comm_type='internal',
+                message=initial_assessment_report,
+            )
             assessments.append([group_instance.goal, assessment])
     
     assessment_report = ""
     for idx, assess in enumerate(assessments):
         assessment_report += f"Group {idx+1} - {assess[0]}\n{assess[1]}\n\n"
     
-    # 名称含 review/decision/FRDT 的团队会额外作为最终审查团队运行。
-    # STEP 2.3. FRDT Process
+    # STEP 2.3. Final Review: 审查团队读取前面所有团队的报告，并且只运行一次。
+    prior_reports = initial_assessment_report + assessment_report
     final_decisions = []
     for group_instance in group_instances:
-        if 'review' in group_instance.goal.lower() or 'decision' in group_instance.goal.lower() or 'frdt' in group_instance.goal.lower():
-            decision = group_instance.interact(comm_type='internal')
+        goal = group_instance.goal.lower()
+        if 'review' in goal or 'decision' in goal or 'frdt' in goal:
+            decision = group_instance.interact(
+                comm_type='internal',
+                message=prior_reports,
+            )
             final_decisions.append([group_instance.goal, decision])
     
     compiled_report = ""
     for idx, decision in enumerate(final_decisions):
         compiled_report += f"Group {idx+1} - {decision[0]}\n{decision[1]}\n\n"
 
-    # STEP 3. Final Decision
-    decision_prompt = f"""You are an experienced medical expert. Now, given the investigations from multidisciplinary teams (MDT), please review them very carefully and return your final decision to the medical query."""
+    # STEP 3. Final Decision: 汇总所有阶段（初始、专科、审查）的报告。
+    all_reports = prior_reports + compiled_report
+    decision_prompt = """You are an experienced medical expert. Review all MDT reports carefully and return the final decision to the medical query."""
     tmp_agent = Agent(instruction=decision_prompt, role='decision maker', model_info=model)
     tmp_agent.chat(decision_prompt)
 
-    # 注意：当前上游实现只把 initial_assessment_report 传给最终 Agent；
-    # assessment_report 与 compiled_report 虽已生成，却没有被拼入这个提示词。
-    final_decision = tmp_agent.temp_responses(f"""Investigation:\n{initial_assessment_report}\n\nQuestion: {question}""", img_path=None)
+    final_decision = tmp_agent.temp_responses(
+        f"""Investigation reports from all MDT stages:
+    {all_reports}
+
+    Question: {question}
+
+    Return one final, evidence-based answer.""",
+            img_path=None,
+        )
 
     return final_decision

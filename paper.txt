@@ -1,0 +1,1041 @@
+              A Knowledge-driven Adaptive Collaboration of LLMs for
+                      Enhancing Medical Decision-making
+            Xiao Wu1,2         Ting-Zhu Huang2∗ Liang-Jian Deng 2                    Yanyuan Qiao3
+                                     Imran Razzak1 Yutong Xie1 *
+                    1
+                        Mohamed bin Zayed University of Artificial Intelligence (MBZUAI)
+                          2
+                            University of Electronic Science and Technology of China
+                            3
+                              Swiss Federal Institute of Technology Lausanne (EPFL)
+                   {xiao.wu, imran.razzak, yutong.xie}@mbzuai.ac.ae         tingzhuhuang@126.com
+                               liangjian.deng@uestc.edu.cn      yanyuan.qiao@epfl.ch
+
+
+                         Abstract                           cal clinical processes (Kodner and Spreeuwenberg,
+                                                            2002).
+     Medical decision-making often involves inte-              Recently, large language models (LLMs), owing
+     grating knowledge from multiple clinical spe-
+                                                            to their powerful reasoning and knowledge synthe-
+     cialties, typically achieved through multidisci-
+     plinary teams. Inspired by this collaborative          sis capabilities, have demonstrated promising po-
+     process, recent work has leveraged large lan-          tential in emulating the roles of clinicians and sup-
+     guage models (LLMs) in multi-agent collabo-            porting medical decision-making (Tang et al., 2023;
+     ration frameworks to emulate expert teamwork.          Kim et al., 2024; Chen et al., 2025). Multi-agent
+     While these approaches improve reasoning               collaboration (MAC) based on LLMs has emerged
+     through agent interaction, they are limited by         as a key paradigm, enhancing the reasoning per-
+     static, pre-assigned roles, which hinder adapt-        formance of individual agents through collective
+     ability and dynamic knowledge integration. To
+                                                            deliberation. For instance, (Tang et al., 2023) veri-
+     address these limitations, we propose KAMAC,
+     a Knowledge-driven Adaptive Multi-Agent                fied that a training-free collaboration framework in
+     Collaboration framework that enables LLM               which multiple LLM-based agents simulate a mul-
+     agents to dynamically form and expand expert           tidisciplinary medical team through role-playing
+     teams based on the evolving diagnostic con-            and multi-round discussions, and achieved strong
+     text. KAMAC begins with one or more expert             performance across medical question answering
+     agents and then conducts a knowledge-driven            (QA) datasets. In addition, (Chen et al., 2025)
+     discussion to identify and fill knowledge gaps
+                                                            further leveraged medical multi-agents and imple-
+     by recruiting additional specialists as needed.
+     This supports flexible, scalable collaboration         mented cumulative consultation strategies using
+     in complex clinical scenarios, with decisions          retrieval augmentation generation (RAG), which
+     finalized through reviewing updated agent com-         enhances model outputs by retrieving external med-
+     ments. Experiments on two real-world medi-             ical knowledge to support clinical reasoning and
+     cal benchmarks demonstrate that KAMAC sig-             improve diagnostic accuracy.
+     nificantly outperforms both single-agent and              Some multi-LLM debate frameworks are also
+     advanced multi-agent methods, particularly in          closely related to collaboration (Kaesberg et al.,
+     complex clinical scenarios (i.e., cancer progno-
+                                                            2025; Chen et al., 2023b; Abdelnabi et al., 2024;
+     sis) requiring dynamic, cross-specialty exper-
+     tise. Our code is publicly available at: https:        Liang et al., 2023). Among them, a framework for
+     //github.com/XiaoXiao-Woo/KAMAC.                       iterative collaboration between agents to make deci-
+                                                            sions is proposed, which stimulates higher quality
+1    Introduction                                           answers (compared to a single model) by involving
+                                                            multiple models in the discussion. These works
+In healthcare, diagnosis, prognosis, and a vari-            explore the potential application of LLMs and the
+ety of clinical treatments are guided by medical            possibility of their use in medical MDT decisions.
+decision-making processes that require the applica-            Although these MAC methods enable agents to
+tion of complex medical knowledge (Sutton et al.,           tackle problems that are difficult or unsolvable by
+2020). An individual professional medical perspec-          a single agent by learning new contexts and actions
+tive is not enough to meet the needs of patients.           through interactions with peers or known informa-
+Multidisciplinary teams (MDTs) or integrated care           tion, the challenge remains unresolved. It mainly
+teams may participate in disease treatment in practi-       stems from the use of static, pre-assigned roles
+    * Corresponding author.                                 based on inherent domain knowledge, which limits
+                                                        33495
+      Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, pages 33495–33512
+                           November 4-9, 2025 ©2025 Association for Computational Linguistics
+               Question        Decision-making              Question            Decision-making           Question      Decision-making
+
+                                                                                                          Expert
+                             MAC                                               MAC                      Recruitment          MAC
+                 Recruited One Type of Experts                  Optimized Recruited Experts
+Complexity Analysis                                                                                              KG
+                                                                                                                                   KG
+         Easy                        Expert                     &                      Expert
+       Medium                      Recruitment        Task           Role            Recruitment
+         Hard                                        Analysis       Analysis
+
+    Question                Fixed Teams                                   Question                             Recruited Experts
+                      Single-/Multi-/Tiered-Agents                                                                                  N-Rounds
+
+          a) Problem-driven MAC                         b) Observation-driven MAC                       c) Knowledge-driven MAC
+
+Figure 1: Comparison of multi-agent collaboration (MAC) strategies in medical decision-making. (a) Problem-
+driven MAC (Kim et al., 2024; Yang et al., 2024b) uses predefined question-complexity tiers (easy, medium, hard)
+to assemble static single- or multi-tier expert teams (b) Observation-driven MAC (Chen et al., 2023c,a) dynamically
+analyzes task and role characteristics from initial observations to optimize expert recruitment for each question. (c)
+Our proposed Knowledge-driven MAC adaptively expands the expert team during discussion by detecting knowledge
+gaps (KG), enabling scalable and flexible collaboration for complex, cross-domain clinical scenarios.
+
+
+the system’s adaptability during collaboration. As                             enhancing medical decision-making. Specifically,
+discussions progress, each agent tends to produce                              KAMAC dynamically increases the number of
+increasingly fine-grained analyses within its fixed                            medical expert team members required for patients
+specialty. For example, in the evaluation of a pa-                             by exploring additional expert knowledge during
+tient presenting with chest pain, a radiology agent                            the discussion process. KAMAC begins with an
+may focus solely on imaging findings suggestive                                initial consultation involving one or more experts.
+of pulmonary embolism, while a cardiology agent                                It then engages in a knowledge-driven collabora-
+may emphasize electrocardiogram (ECG) changes                                  tive discussion, which assesses whether additional
+indicative of myocardial infarction. Without a                                 expertise is needed by detecting knowledge gaps
+mechanism to reconcile or adapt these perspectives,                            (KG) and dynamically recruits appropriate experts
+the collaboration degenerates into a juxtaposition                             to fill the knowledge gaps, enabling scalable and
+of isolated preferences rather than a convergent                               flexible collaboration for complex, cross-domain
+diagnostic consensus. This fragmentation under-                                clinical scenarios. Finally, a moderator is responsi-
+mines the effectiveness of consensus strategies and                            ble for reviewing updated agent comments to com-
+restricts the system’s ability to dynamically incor-                           plete the decision-making process. Such progres-
+porate broader context or cross-domain reasoning.                              sive collaboration and flexible team expansion al-
+   Recent studies have attempted to improve MAC                                low the model to adaptively allocate resources and
+flexibility by incorporating novel expert recruit-                             produce more accurate, context-aware decisions.
+ment strategies. For instance, problem-driven                                  In contrast to prior methods, the proposed method
+MAC (Kim et al., 2024) (Figure 1a) assigns ex-                                 enables the system to adapt to the evolving clini-
+pert teams based on question complexity, while                                 cal treatment in the real world and provide more
+observation-driven MAC (Chen et al., 2023a,c)                                  nuanced and comprehensive support to patients.
+(Figure 1b) selects experts according to task and                                 Our contributions include three folds:
+role analysis. However, these methods still rely
+                                                                                 1. We propose the KAMAC framework that
+on static or pre-optimized expert pools and cannot
+                                                                                    dynamically extends a single expert agent
+adapt during multi-round interactions. As a re-
+                                                                                    into multiple expert agents to form a
+sult, even when new, fine-grained insights emerge
+                                                                                    multi-disciplinary team for medical decision-
+over multiple discussion rounds, no new experts are
+                                                                                    making.
+brought in. The limitations in these works still hin-
+der truly scenario-specific collaboration, especially                            2. We design a knowledge-driven collaborative
+in dynamic and diverse clinical environments.                                       discussion mechanism that enables agents to
+  To alleviate this, as illustrated in Figure 1c, we                                dynamically expand the team to fill knowl-
+propose a Knowledge-driven Adaptive Multi-                                          edge gaps, aiming to improve adaptability and
+Agent Collaboration (KAMAC) framework for                                           decision accuracy in complex clinical scenar-
+                                                                      33496
+      ios.                                               2024), consensus (Kaesberg et al., 2025; Chen
+                                                         et al., 2023b), conflict-solving, generation/evolu-
+    3. Extensive experiments on two medical bench-       tion (Yuan et al., 2024; Chen et al., 2023c,a), and
+       marks, MedQA and Progn-VQA, demonstrat-           encouragement (Liang et al., 2023; Tran et al.,
+       ing that our KAMAC improves single-agent          2025). Some multi-LLM debate frameworks are
+       and advanced multi-agent collaboration frame-     also closely related to collaboration (Kaesberg
+       works.                                            et al., 2025; Chen et al., 2023b; Abdelnabi et al.,
+                                                         2024; Liang et al., 2023). Among them, a frame-
+2     Related Work                                       work for iterative collaboration between agents
+                                                         to make decisions is proposed, which stimulates
+Advanced LLMs such as GPT-4 (Achiam et al.,              higher quality answers (compared to a single
+2023), DeepSeek (Liu et al., 2024; Guo et al.,           model) by involving multiple models in the discus-
+2025), and Gemini (Team et al., 2024) have demon-        sion. These works explore the potential application
+strated strong reasoning capabilities and have been      of LLMs and the possibility of their use in medi-
+used as agents with considerable computational in-       cal MDT diagnostics. Although assigning experts
+vestment in various medical tasks such as question       can effectively improve the performance of spe-
+answering (Kim et al., 2024; Tang et al., 2023),         cific tasks, the rationality of expert assignment in
+diagnosis (Zhang et al., 2024), and report genera-       multi-agent collaboration is still insufficient. (Chen
+tion (Thawakar et al., 2024; Hyland et al., 2023).       et al., 2023a,c) introduces optimal expert genera-
+We list two main related areas of work:                  tion strategies in the initial expert recruitment stage,
+                                                         but it does not consider the relationship between
+LLM-Based Agentic Medical Decision-Making
+                                                         expert knowledge and cooperation between experts.
+Medical decision-making systems leverage multi-
+                                                         (Yuan et al., 2024) introduces a dynamic evolu-
+ple LLM experts, each assigned a predefined clini-
+                                                         tion strategy for the existing experts but relies on
+cal specialty to mimic real-world multidisciplinary
+                                                         a large initial population and requires additional
+teams. Early work demonstrated that consensus
+                                                         investment. These limitations make it unsuitable
+among expert agents yields higher diagnostic ac-
+                                                         for medical decision-making.
+curacy than any single model or simple voting
+schemes (Tang et al., 2023; Liang et al., 2023;
+                                                         3     Method
+Chen et al., 2023b). Some recent works mainly
+focused on diagnostic findings (Kim et al., 2024;        3.1   Overview
+Li et al., 2024b) and knowledge integration (Xiong
+                                                         Figure 2 presents the KAMAC framework, which
+et al., 2024; Nori et al., 2023; Kim et al., 2024).
+                                                         comprises three main stages: (1) Initial Consulta-
+MediQ (Li et al., 2024b) designs a system to seek
+                                                         tion: KAMAC begins with a single/multiple expert
+methods to guide the deepening of interactions be-
+                                                         agents, which evaluate the case and provide initial
+tween patients and experts. For instance, (Kim
+                                                         feedback for ongoing discussion; (2) Knowledge-
+et al., 2024) verified that expert collaboration has
+                                                         driven Collaborative Discussion: Agents engage in
+better accuracy for medical decision-making than
+                                                         a structured, knowledge-guided dialogue to deter-
+a single expert, showcasing that consensus is su-
+                                                         mine whether further expertise is required and then
+perior to a voting strategy in various clinical appli-
+                                                         adaptively expands the team and promotes struc-
+cations. More recently, MDteamGPT (Chen et al.,
+                                                         tured discussions among agents, guided by domain
+2025) adds a leader agent, historical dialogues, and
+                                                         knowledge and the evolving diagnostic context, and
+RAG to integrate information and supplementation
+                                                         (3) Decision Making: A designated moderator co-
+strategies to assist in decision-making.
+                                                         ordinates the final decision process by initiating a
+Multi-Agent Collaboration in Medical Decision-           voting mechanism among agents. The pseudocode
+Making Researchers have demonstrated that                of KAMAC is shown in Algorithm 1. More details
+multi-agent collaborative research can enhance the       in all prompts refer to Appendix D.
+reasoning capabilities of these LLMs (Yue et al.,
+2024; Wang et al., 2024; Li et al., 2024a). Well-        3.2   Initial Consultation
+designed strategies can enhance autonomous multi-        Given a clinical problem Q, KAMAC first per-
+agent systems for task-solving capabilities, such        forms an initial consultation by recruiting one or
+as debate (Chan et al., 2023; Abdelnabi et al.,          more expert agents from a predefined expert pool.
+                                                    33497
+ Question (Q): Age: 76.4, Sex: Male, ECOG PS: ECOG 1, Smoking PY: 0, Smoking Status: Non-smoker, Ds Site: Esophagus, Subsite: Cervical esophagus, T: T2, N: N1, M : M0, Stage: III,
+ Path: Squamous Cell Carcinoma, HPV: none, Tx Modality: RT alone, Chemo? : none, Dose: 70.0, Fx: 35, Local: none, Regional: Yes, Distant: none, 2nd Ca: suspicious, Contrast Enhanced: 1
+
+
+
+  a) Initial Consultation
+
+                                              Radiologist           Oncologist                                 Expertise: Radiology              Expertise: Oncology
+                                                                                                               Analysis:                         Analysis:
+                                                                                                               Comments:                         Comments:
+                                              Pathologist             Targeted
+                                                                   therapy expert
+                                                                                                               Expertise: Pathology               Expertise: More Options
+                                                                                                               Analysis:                          Analysis:
+                                                 ……                     ......                                                                    Comments:
+                                                                                                               Comments:
+                                               Recruitment in the initial stage                                                       Initial Assessment
+
+
+
+  b) Knowledge-driven Collaborative Discussion                                                                                            1) Exchange comments and determine
+                                                                                                                                                     the consensus
+                                                                                 Next round                      Expert 1
+                                                                                                                                          2) Knowledge-driven Chat
+                                                                                                    Expert 1
+                 Expert 1     Expert 2     Expert 3    Expert 4      Expert 5                                                              Type of Experts: Yes. A diagnostic
+                                                                                                     Next round                            radiologist and a medical oncologist
+     Expert 1                                                                                                                              is needed ….
+     Expert 2
+                                                                                                Expert 1   Expert 2    Expert 3            Reason: This expertise
+                                                                                                                                           complements radiation therapy
+     Expert 3                    3<−>2                                               Expert 1                                              planning by ensuring accurate target
+                                                                                                                                           delineation and staging ….
+     Expert 4                                                                        Expert 2                               2−>3
+                                                                                                                                          3) Expert Recruitment during the
+     Expert 5        5−>1                     5−>3          5−>4                     Expert 3                                                         discussion
+
+
+
+                      System: You are a final medical decision maker who reviews all opinions from different medical experts and make final decision.
+   c) Final           User: Given each agent's final answer, please review each agent's opinion and make the final answer to the question by taking a majority vote.
+   Decision           Only output your final answer in the format below:
+                      {{final_answer_template}}
+   Making             Question: {{question}}                                                                                                      Answer: Dead
+
+
+Figure 2: Schematic diagram of Knowledge-driven Adaptive Multi-Agent Collaboration (KAMAC) framework
+for medical decision-making. The KAMAC includes three parts: (a) Initial Consultation: One or more expert
+agents (e.g., radiologist, pathologist) are selected based on the clinical question to provide initial assessments; (b)
+Knowledge-driven Collaborative Discussion: Agents iteratively exchange views to refine reasoning. If a knowledge
+gap is detected, KAMAC dynamically recruits additional specialists, and the expanded team continues the dialogue
+until consensus is reached or the round limit is met; and (c) Final Decision Making: A moderator reviews all agent
+responses and produces the final answer. The symbols ✓ and ✗ indicate agreement/disagreement with the current
+expert’s comment, respectively. Only when a disagreement occurs, (✗ i -> j) or (✗ i <-> j) is used to denote a
+one-way or two-way discussion between expert i and expert j, respectively.
+
+
+These agents represent diverse clinical roles (e.g.,                                              context. Using the agent interaction prompt P3 ,
+radiologist, cardiologist) and are selected based on                                              they critique each other’s responses, resolve incon-
+their relevance to the query using an expert recruit-                                             sistencies, and collaboratively refine their reason-
+ment prompt P1 . Each recruited agent indepen-                                                    ing and comments.
+dently analyzes the problem using an initial assess-
+                                                                                                     At the end of each round, the currently assigned
+ment prompt P2 , producing diagnostic opinions or
+                                                                                                  experts are prompted to assess whether a knowl-
+treatment suggestions. The individual responses
+                                                                                                  edge gap (KG) remains—that is, whether their col-
+are aggregated into a consolidated feedback signal,
+                                                                                                  lective expertise is sufficient to fully address the
+which serves as the basis for initiating collaborative
+                                                                                                  problem. This self-assessment is facilitated by the
+discussion in the next stage. This step simulates a
+                                                                                                  KG detection prompt P4 , which takes as input the
+typical initial clinical encounter, where specialists
+                                                                                                  current discussion and feedback. If a gap is de-
+offer their perspectives before deliberation begins.
+                                                                                                  tected, KAMAC triggers expert recruitment by issu-
+3.3 Knowledge-driven Collaborative                                                                ing a targeted recruitment prompt P5 , allowing the
+    Discussion                                                                                    system to enlist additional domain-specific agents
+                                                                                                  to address the identified deficiency.
+In this stage, KAMAC facilitates multi-round,
+knowledge-driven discussions among the recruited                                                    The newly recruited agents receive contextual
+expert agents. Each round begins with agents ex-                                                  examples (i.e., the current discussion history) as
+changing their views based on the evolving shared                                                 few-shot input and respond to the original question
+                                                                                         33498
+ Algorithm 1: Knowledge-driven Adaptive Multi-Agent Collaboration (KAMAC) Decision-
+ making
+   Input: Problem Q
+   Result: Answer ans.
+ 1 Initialize: KAMAC ← [].
+   ▷ Define prompts. More details in all prompts refer to Appendix D.
+ 2 r ← 1, Consensus ←False, KG ←False.
+ 3 P1 : Expert Recruitment Prompt; P2 : Initial Assessment Prompt.
+ 4 P3 : Agent Interaction Prompt; P4 : KG Prompt for Recruited Experts.
+ 5 P5 : KG Prompt for Expert Recruitment; P6 : Agent Update Prompt.
+ 6 P7 : Final Decision Prompt.
+   ▷ Initial consultation.
+   ▷ Recruit N clinician agents.
+ 7 (Agent1 , Agent2 , · · · , AgentN ) ← Recruit(Q, KAMAC, P1 )
+   ▷ Clinician agents consist of a multi-disciplinary team.
+ 8 KAMAC ← (Agent1 , Agent2 , · · · , AgentN )
+   ▷ Initial assessment.
+ 9 (Option1 , Option2 , · · · , OptionN ) ← Chat(Q, KAMAC, P2 )
+   ▷ Concat all options as feedback.
+10 F eedback ← Concat(Option1 , Option2 , · · · , OptionN )
+   ▷ Knowledge-driven collaborative discussion.
+11 while r ≤ R, and not Consensus, and not KG do
+        ▷ Exchange agent’s comments and determine the consensus.
+12      Consensus, F eedback ← Chat(Q, KAMAC, F eedback, P3 )
+        ▷ Assess whether any additional specialist is needed to fill a knowledge or diagnostic gap.
+13      KG ← Chat(Q, KAMAC, F eedback, P4 )
+14      if KG then
+            ▷ Expert recruitment for recruiting additional experts during the discussion.
+15          (AgentN +1 , AgentN +2 , · · · , AgentM ) ← Recruit(Q, KAMAC, P5 )
+            ▷ Review all options and provide comments as feedback.
+16          (OptionN +1 , OptionN +2 , · · · , OptionM ) ← Chat((AgentN +1 , AgentN +2 , · · · ,
+             AgentM ), F eedback, P2 )
+17          F eedback ← Concat(F eedback, OptionN +1 , OptionN +2 , · · · , OptionM )
+            ▷ Exchange agent’s comments and determine the consensus.
+18          Consensus, F eedback ← Chat(Q, (AgentN +1 , AgentN +2 , · · · , AgentM ),
+19          F eedback, P3 )
+            ▷ Update KAMAC.
+20          KAMAC ← (KAMAC, · · · , AgentN +1 , · · · , AgentM )
+21          KG ←False
+        ▷ Update agent’s comments.
+22      F eedback ← Chat(Q, KAMAC, F eedback, P6 )
+23      r ←r+1
+     ▷ Make the final decision by LLMs.
+24 ans ← Moderator(Q, F eedback, P7 )
+25 return ans
+
+
+
+using the assessment prompt P2 , conditioned on       the group discussion in the subsequent round. This
+the ongoing feedback. Their outputs are appended      recursive process allows progressive team expan-
+to the current feedback buffer and integrated into    sion, enabling KAMAC to dynamically adapt to
+
+                                                 33499
+the evolving complexity of the diagnostic scenario.      4.2       Implementation Details
+   Throughout the discussion, all agents, includ-        We use GPT-4.1-mini 1 as the primary model for
+ing the initial and newly recruited ones, update         all experiments, with the temperature set to 0 to
+their reasoning using the agent update prompt P6 ,       ensure deterministic outputs. In addition, we com-
+which ensures alignment with the current collective      pare our proposed method with DeepSeek-R1 (Guo
+context. This process continues until either (1) a       et al., 2025), as shown in Table 2. For each medical
+consensus is reached via iterative agreement checks      question, we store the corresponding chat history
+using P3 , or (2) a maximum number of discussion         in a local file. When revisiting the same question,
+rounds R is reached.                                     the system loads the saved file to regenerate con-
+                                                         sistent initial medical comments from each role
+3.4 Decision Making                                      before resuming the collaborative discussion. The
+In the final stage, KAMAC invokes a moderator            final decision is made solely based on the proposed
+agent, typically a general-purpose LLM, to gener-        collaboration method. The maximum number of
+ate the final decision. The moderator receives the       discussion rounds R is set to 3. The initial number
+latest set of agent comments and the full discussion     of experts is set to 1. We select GPT-4.1-mini due
+history and synthesizes a response via a decision        to its strong medical reasoning capabilities, low
+prompt (P7 ).                                            latency, predictable computational cost, and fully
+                                                         deterministic behavior. These advantages make it
+4   Experiments                                          preferable for our controlled evaluation setting, in
+                                                         contrast to larger models such as GPT-4 or retrieval-
+4.1 Datasets                                             enhanced models like DeepSeek-R1, which often
+To evaluate the proposed KAMAC framework, we             entail higher overhead and less consistent outputs.
+conduct experiments on the testing sets of two pub-      4.2.1 Comparison Methods
+licly available medical question answering (QA)
+                                                         The compared methods include: (1) Single-agent,
+datasets: MedQA (Jin et al., 2021) and Progn-
+                                                         which uses an LLM for decision-making, where the
+VQA (Welch et al., 2023).
+                                                         question and the answer template are input to out-
+MedQA We use all 1273 samples in the testing             put an answer, (2) Chain of Thought (CoT) (Wei
+set. This dataset describes the United States Medi-      et al., 2022), which combines the single-agent
+cal Licensing Examination and includes questions,        backbone with a step-by-step prompt to conduct
+multiple-choice questions, and answers.                  analysis and decision-making, (3) Majority Vot-
+                                                         ing, which is used in multi-agent decision-making
+Progn-VQA We use all 750 Visual Question An-             methods (Chen et al., 2023b; Yang et al., 2024a;
+swering (VQA) pairs in the testing set. The dataset      Kaesberg et al., 2025) for making final decision
+includes head and neck cancer Computed Tomog-            with more that 50% votes. (4) Consensus, which
+raphy (CT) image volumes collected from 2005-            is also adopted in (Kaesberg et al., 2025; Kim
+2017 treated with definitive radiotherapy at the         et al., 2024). (5) MDAgents (Kim et al., 2024) is
+University Health Network in Toronto, Canada. It         an advanced multi-agent framework that performs
+also contains the corresponding regions of interest      problem-driven expert recruitment, MAC, and con-
+(ROIs) and structured patient information in RT-         sensus decision to output the final results.
+STRUCT format with standardized descriptions,
+including demographic, clinical, and treatment in-       4.3       Evaluation Metrics
+formation based on the 7th edition TNM staging           We evaluate the proposed method using four stan-
+system and AJCC (American Joint Committee on             dard metrics: accuracy (Acc), precision (Prec),
+Cancer). The dataset contains patient information,       specificity (Spec), and recall score (Recall).
+CT image volumes and ROIs, and the patient’s sur-
+vival status at the last follow-up. Please see Table 7   5       Results and Analysis
+for understanding the clinical and imaging informa-      5.1       Comparisons with State-of-the-Arts
+tion used in the dataset. For CT input, we selected
+                                                         In Table 1, the proposed method achieves improved
+the axial slice with the largest cross-sectional area
+                                                         results on four metrics compared to multiple meth-
+of the ROI. More details on the input clinical and
+imaging variables are provided in Appendix C.                1
+                                                                 https://openai.com/index/gpt-4-1/
+
+                                                    33500
+Table 1: Main results on four common metrics across MedQA and Progn-VQA datasets, evaluated using GPT-4.1-
+mini. Bold values indicate the best performance. Here, ‘SA’ means the single-agent methods, and ‘MA’ means the
+multi-agent methods. Gray-highlighted cells indicate the average score.
+
+                                           MedQA                                           Progn-VQA
+ Methods            Types                                              Avg                                               Avg
+                               Acc       Prec  Spec       Recall                 Acc       Prec  Spec          Recall
+ Single-agent       SA        79.50     79.65     94.86    79.36       83.34     86.00     86.28     14.79     97.21     71.07
+ +CoT               SA        84.21     84.82     96.03    84.02       87.27     84.67     86.29     15.52     97.32     70.95
+ Majority Voting    MA        86.49     86.93     96.60    86.38       89.10     86.27     86.12     12.17     99.84     71.10
+ Consensus          MA        80.68     80.70     95.15    80.59       84.28     86.86     86.81     31.85     98.86     76.09
+ MDAgents           MA        87.74     87.92     96.92    87.55       90.03     87.01     88.83     33.70     96.21     76.44
+ KAMAC              MA        88.14     88.30     97.02    88.11       90.39     87.20     89.79     40.52     95.74     78.31
+
+Table 2: Performance comparison of Baseline and KAMAC on MedQA and Progn-VQA using DeepSeek-R1 and
+GPT-4.1-mini across four metrics and their average. Gray-highlighted cells indicate the average score, with relative
+improvements shown in small colored text. Where ‘Baseline’ means single-agent+CoT.
+
+                                        MedQA                                             Progn-VQA
+ Method                                                            Avg                                                  Avg
+                             Acc      Prec Spec       Recall                     Acc      Prec Spec        Recall
+ Baseline (DeepSeek-R1)     88.14     88.12   97.03   88.00      90.32         77.87     88.11     37.07   85.33      72.10
+ KAMAC (DeepSeek-R1)        89.63     89.53   97.41   89.50    91.52(+1.20)    86.13     88.41     31.03   96.21    75.45 (+3.35)
+ Baseline (GPT-4.1-mini)    84.21     84.82   96.03   84.02      87.27         84.67     86.29     15.52   97.32      70.95
+ KAMAC (GPT-4.1-mini)       88.14     88.30   97.02   88.11    90.39 (+3.12)   87.20     89.79     40.52   95.74    78.31 (+7.36)
+
+Table 3: Discussion on the number of initial agents on the MedQA and Progn-VQA datasets. Gray-highlighted cells
+indicate the average score.
+
+          Initial Agents                MedQA                                      Progn-VQA
+                                                               Avg                                              Avg
+             Number         Acc       Prec Spec       Recall             Acc       Prec Spec          Recall
+                1           88.14    88.30    97.02   88.11    90.39     87.20    89.79    40.52      95.74    78.31
+                3           87.98    88.16    96.98   87.82    90.24     86.40    90.43    45.69      93.85    79.09
+                5           80.28    80.31    95.06   80.13    83.95     89.10    89.54    35.43      96.69    77.69
+
+
+ods on the MedQA dataset. For the Progn-VQA                    CoT), but the experimental results are better than
+dataset, the proposed method achieves better results           the baseline method. This improvement shows that
+on the Acc, Prec, and Spec metrics. In addition,               our method can be generalized to more LLM mod-
+KAMAC leverages knowledge-driven prompts to                    els. In addition, this improvement aligns with the
+detect KG and expand experts to form multi-agent               actual clinical treatment scenario, where clinical
+collaborative discussions. Focusing on multi-agent-            treatment allows the dynamic addition of experts
+based methods, both the majority voting and con-               according to the patient’s clinical treatment situa-
+sensus are set to five experts, while MDAgents                 tion, thereby carrying out more effective treatment.
+adopts a single agent, a multi-disciplinary team               It contributes to optimizing the best treatment op-
+with five experts, and an integrated care team with            tions and limited clinical resources in medical ap-
+nine experts. Compared with them, the proposed                 plications.
+method can achieve better results, which demon-
+strates that our method overcomes the limitation               5.2      Discussion of KAMAC
+of knowledge in the single-agent model and has a
+                                                               Results of Different Multi-agent Methods In
+more suitable multi-disciplinary team to enhance
+                                                               Table 1, we present different multi-agent methods.
+multi-agent reasoning and collaboration.
+                                                               Our approach outperforms the static multi-agent
+   In Table 2, we further evaluate our method on               methods (majority voting and Consensus) and the
+another model, DeepSeek-R1. In our method, the                 MDAgent method on both datasets. In the static
+initial number of experts is set to 1, which is con-           multi-agent methods, five experts were set to con-
+sistent with the baseline method (single-agent +               duct a multi-agent collaboration. In MDAgents,
+                                                          33501
+                                                                                    1.28 and 2.41 experts per case, respectively, which
+                     infectious disease specialist
+                                        cardiologist                                is still significantly more efficient than the full
+                                        neurologist                                 multi-agent approach and is 53% and 56% lower
+                                   endocrinologist
+                                    pulmonologist                                   than MDAgents, respectively. In addition, we also
+                                gastroenterologist
+                                      hematologist                                  perform statistical analysis and cost-efficiency in
+                                       pediatrician
+                                        psychiatrist                                Appendix B.
+                                medical geneticist
+                                   rheumatologist
+                                       nephrologist
+                                       obstetrician                                 Comparison of Initial Number of Experts As
+                 emergency medicine physician                                       shown in Table 3, using one initial expert outper-
+ Expert Type
+
+
+
+
+                                     dermatologist
+                                     neonatologist                                  forms other configurations. This indicates that start-
+                                       hepatologist
+                        pediatric endocrinologist                                   ing with a single agent promotes more targeted re-
+                                    epidemiologist
+                                     immunologist                                   cruitment. With only one initial agent, KAC-MAF
+                                      gynecologist                                  more accurately identifies knowledge gaps and re-
+                                         oncologist
+                                         radiologist                                cruits the most relevant experts. In contrast, begin-
+                              orthopedic surgeon
+           pediatric infectious disease specialist                                  ning with five agents may introduce overlapping or
+                                           urologist
+                                        pathologist                                 irrelevant perspectives early, increasing redundancy
+                                        toxicologist                                and noise in subsequent decisions. Thus, fewer ini-
+                          clinical pharmacologist
+                                  trauma surgeon                                    tial experts allow for more precise adaptation and
+                                                   0   20   40   60 80 100 120      reduce early overfitting. In Figure 3, we show the
+                                                                  Count
+                                                                                    expert distribution for KAMAC with 1 versus 5
+                       (a) Number of Initial Experts: 1                             initial experts. Among the top 30 experts, 24 are
+                                                                                    common to both settings (80% overlap). However,
+             infectious disease specialist
+                                  radiologist                                       the total number of experts remains lower when
+                                 neurologist
+                            pharmacologist                                          starting with one expert compared to five.
+           emergency medicine physician
+                                 pathologist
+                            endocrinologist
+                                 cardiologist                                       6    Conclusion
+                                pediatrician
+                             pulmonologist
+                         medical geneticist
+                         gastroenterologist                                         This work presents KAMAC, a knowledge-driven
+                              immunologist
+                               hematologist
+                                                                                    adaptive multi-agent collaboration framework that
+ Expert Type
+
+
+
+
+              internal medicine physician                                           brings structured, dynamic reasoning into medical
+                            rheumatologist
+                                 psychiatrist                                       decision-making with LLMs. By allowing agents
+                              dermatologist
+                                nephrologist                                        to actively assess their own limitations and request
+                   clinical pharmacologist                                          additional expertise when needed, KAMAC over-
+                                  oncologist
+                                obstetrician                                        comes the rigidity of traditional multi-agent se-
+                        clinical pathologist
+                                hepatologist                                        tups and more faithfully mirrors real-world clinical
+                              neonatologist
+                                 toxicologist                                       workflows. Our experiments on two real-world
+                              microbiologist                                        medical QA benchmarks demonstrate that KA-
+                                 geriatrician
+                   primary care physician                                           MAC consistently outperforms both single-agent
+                               gynecologist
+                                                                                    and existing multi-agent baselines.
+                                            0      50 100 150 200 250 300 350
+                                                             Count                     Beyond accuracy improvements, KAMAC of-
+                      (b) Number of Initial Experts: 5                              fers deeper insights into AI collaboration: decision
+                                                                                    quality improves not merely through more param-
+Figure 3: Histogram illustrating the impact of initial                              eters or agents, but through adaptive, feedback-
+expert settings on the final top-30 expert distribution in                          driven interaction grounded in knowledge aware-
+our method on the MedQA dataset. "Count" denotes the                                ness. This framework brings multi-agent LLM
+total frequency of each expert type. An 80% overlap
+                                                                                    systems closer to real-world clinical workflows,
+in expert types is observed between the 1- and 5-expert
+settings.                                                                           where expert composition evolves with case com-
+                                                                                    plexity. Future directions include modeling agent
+                                                                                    uncertainty and integrating clinician-in-the-loop
+there were 2.41 and 4.34 experts per case. Com-                                     feedback to further support real-time deployment
+pared to the above methods, KAMAC recruited                                         in medical environments.
+                                                                                 33502
+Limitations                                              Weize Chen, Yusheng Su, Jingwei Zuo, Cheng Yang,
+                                                          Chenfei Yuan, Chen Qian, Chi-Min Chan, Yujia Qin,
+While KAMAC demonstrates promising results, it            Yaxi Lu, Ruobing Xie, and 1 others. 2023c. Agent-
+has several limitations. The current framework fo-        verse: Facilitating multi-agent collaboration and ex-
+                                                          ploring emergent behaviors in agents. arXiv preprint
+cuses on textual and imaging inputs; future work
+                                                          arXiv:2308.10848, 2(4):6.
+could incorporate additional modalities such as ge-
+nomic or longitudinal clinical data to support a         Daya Guo, Dejian Yang, Haowei Zhang, Junxiao
+wider range of medical tasks. Although KAMAC               Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu, Shi-
+                                                           rong Ma, Peiyi Wang, Xiao Bi, and 1 others. 2025.
+achieves strong performance without fine-tuning            Deepseek-r1: Incentivizing reasoning capability in
+the underlying LLMs, domain-specific fine-tuning           llms via reinforcement learning. arXiv preprint
+may further improve accuracy and agent-role fi-            arXiv:2501.12948.
+delity. However, this would introduce significant        Stephanie L Hyland, Shruthi Bannur, Kenza Bouzid,
+computational overhead and is challenged by the             Daniel C Castro, Mercy Ranjit, Anton Schwaighofer,
+scarcity of high-quality, labeled medical data. Bal-        Fernando Pérez-García, Valentina Salvatelli, Shaury
+ancing accuracy gains with efficiency and data              Srivastav, Anja Thieme, and 1 others. 2023. Maira-1:
+                                                           A specialised large multimodal model for radiology
+availability remains an important direction for fu-
+                                                            report generation. arXiv preprint arXiv:2311.13668.
+ture fine-tuning efforts.
+                                                         Di Jin, Eileen Pan, Nassim Oufattole, Wei-Hung Weng,
+Acknowledgments                                            Hanyi Fang, and Peter Szolovits. 2021. What disease
+                                                           does this patient have? a large-scale open domain
+This work was supported in part by Natural Sci-            question answering dataset from medical exams. Ap-
+ence Foundation of Sichuan Province (2024NS-               plied Sciences, 11(14):6421.
+FSC0038) and the NSFC (12171072).                        Lars Benedikt Kaesberg, Jonas Becker, Jan Philip
+                                                           Wahle, Terry Ruas, and Bela Gipp. 2025. Voting or
+                                                           consensus? decision-making in multi-agent debate.
+References                                                 arXiv preprint arXiv:2502.19130.
+
+Sahar Abdelnabi, Amr Gomaa, Sarath Sivaprasad, Lea       Yubin Kim, Chanwoo Park, Hyewon Jeong, Yik S Chan,
+  Schönherr, and Mario Fritz. 2024. Cooperation, com-      Xuhai Xu, Daniel McDuff, Hyeonhoon Lee, Marzyeh
+  petition, and maliciousness: Llm-stakeholders inter-     Ghassemi, Cynthia Breazeal, and Hae W Park. 2024.
+  active negotiation. Advances in Neural Information       Mdagents: An adaptive collaboration of llms for med-
+  Processing Systems, 37:83548–83599.                      ical decision-making. Advances in Neural Informa-
+                                                           tion Processing Systems, 37:79410–79452.
+Josh Achiam, Steven Adler, Sandhini Agarwal, Lama
+  Ahmad, Ilge Akkaya, Florencia Leoni Aleman,            Dennis L Kodner and Cor Spreeuwenberg. 2002. In-
+  Diogo Almeida, Janko Altenschmidt, Sam Altman,           tegrated care: meaning, logic, applications, and
+  Shyamal Anadkat, and 1 others. 2023. Gpt-4 techni-       implications–a discussion paper. International jour-
+  cal report. arXiv preprint arXiv:2303.08774.             nal of integrated care, 2:e12.
+                                                         Junyou Li, Qin Zhang, Yangbin Yu, Qiang Fu, and
+Chi-Min Chan, Weize Chen, Yusheng Su, Jianxuan Yu,
+                                                           Deheng Ye. 2024a. More agents is all you need.
+  Wei Xue, Shanghang Zhang, Jie Fu, and Zhiyuan
+                                                           Transactions on Machine Learning Research.
+  Liu. 2023. Chateval: Towards better llm-based eval-
+  uators through multi-agent debate. arXiv preprint      Stella Li, Vidhisha Balachandran, Shangbin Feng,
+  arXiv:2308.07201.                                        Jonathan Ilgen, Emma Pierson, Pang Wei W Koh,
+                                                            and Yulia Tsvetkov. 2024b. Mediq: Question-asking
+Guangyao Chen, Siwei Dong, Yu Shu, Ge Zhang,                llms and a benchmark for reliable interactive clinical
+  Jaward Sesay, Börje F Karlsson, Jie Fu, and Yemin         reasoning. Advances in Neural Information Process-
+  Shi. 2023a. Autoagents: A framework for automatic         ing Systems, 37:28858–28888.
+  agent generation. arXiv preprint arXiv:2309.17288.
+                                                         Tian Liang, Zhiwei He, Wenxiang Jiao, Xing Wang,
+Justin Chih-Yao Chen, Swarnadeep Saha, and Mohit           Yan Wang, Rui Wang, Yujiu Yang, Shuming Shi, and
+  Bansal. 2023b. Reconcile: Round-table conference         Zhaopeng Tu. 2023. Encouraging divergent thinking
+  improves reasoning via consensus among diverse           in large language models through multi-agent debate.
+  llms. arXiv preprint arXiv:2309.13007.                   arXiv preprint arXiv:2305.19118.
+Kai Chen, Xinfeng Li, Tianpei Yang, Hewei Wang,          Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang,
+  Wei Dong, and Yang Gao. 2025. Mdteamgpt: A               Bochao Wu, Chengda Lu, Chenggang Zhao, Chengqi
+  self-evolving llm-based multi-agent framework for        Deng, Chenyu Zhang, Chong Ruan, and 1 others.
+  multi-disciplinary team medical consultation. arXiv      2024. Deepseek-v3 technical report. arXiv preprint
+  preprint arXiv:2503.13856.                               arXiv:2412.19437.
+                                                    33503
+Harsha Nori, Nicholas King, Scott Mayer McKinney,            generation for medicine. In Findings of the Associa-
+  Dean Carignan, and Eric Horvitz. 2023. Capabili-           tion for Computational Linguistics ACL 2024, pages
+  ties of gpt-4 on medical challenge problems. arXiv         6233–6251.
+  preprint arXiv:2303.13375.
+                                                          Joshua C Yang, Damian Dalisan, Marcin Korecki, Ca-
+Karan Singhal, Shekoofeh Azizi, Tao Tu, S Sara              rina I Hausladen, and Dirk Helbing. 2024a. Llm
+  Mahdavi, Jason Wei, Hyung Won Chung, Nathan               voting: Human choices and ai collective decision-
+  Scales, Ajay Tanwani, Heather Cole-Lewis, Stephen         making. In Proceedings of the AAAI/ACM Confer-
+  Pfohl, and 1 others. 2022. Large language mod-            ence on AI, Ethics, and Society, volume 7, pages
+  els encode clinical knowledge. arXiv preprint             1696–1708.
+  arXiv:2212.13138.
+                                                          Zhe Yang, Yichang Zhang, Yudong Wang, Ziyao Xu,
+Reed T Sutton, David Pincock, Daniel C Baumgart,            Junyang Lin, and Zhifang Sui. 2024b. Confidence vs
+  Daniel C Sadowski, Richard N Fedorak, and Karen I         critique: A decomposition of self-correction capabil-
+  Kroeker. 2020. An overview of clinical decision           ity for llms. arXiv preprint arXiv:2412.19513.
+  support systems: benefits, risks, and strategies for
+  success. NPJ digital medicine, 3(1):17.                 Siyu Yuan, Kaitao Song, Jiangjie Chen, Xu Tan, Dong-
+                                                             sheng Li, and Deqing Yang. 2024. Evoagent: To-
+Xiangru Tang, Anni Zou, Zhuosheng Zhang, Ziming             wards automatic multi-agent generation via evolu-
+  Li, Yilun Zhao, Xingyao Zhang, Arman Cohan, and            tionary algorithms. In NeurIPS Workshop on Open-
+  Mark Gerstein. 2023. Medagents: Large language            World Agents.
+  models as collaborators for zero-shot medical reason-
+  ing. arXiv preprint arXiv:2311.10537.                   Ling Yue, Sixue Xing, Jintai Chen, and Tianfan Fu.
+                                                            2024. Clinicalagent: Clinical trial multi-agent sys-
+Gemini Team, Petko Georgiev, Ving Ian Lei, Ryan             tem with large language model-based reasoning. In
+  Burnell, Libin Bai, Anmol Gulati, Garrett Tanzer,         Proceedings of the 15th ACM International Confer-
+  Damien Vincent, Zhufeng Pan, Shibo Wang, and 1            ence on Bioinformatics, Computational Biology and
+  others. 2024. Gemini 1.5: Unlocking multimodal            Health Informatics, pages 1–10.
+  understanding across millions of tokens of context.
+  arXiv preprint arXiv:2403.05530.                        Kai Zhang, Rong Zhou, Eashan Adhikarla, Zhiling
+                                                            Yan, Yixin Liu, Jun Yu, Zhengliang Liu, Xun Chen,
+Omkar Chakradhar Thawakar, Abdelrahman M                    Brian D Davison, Hui Ren, and 1 others. 2024. A gen-
+ Shaker, Sahal Shaji Mullappilly, Hisham Cholakkal,         eralist vision–language foundation model for diverse
+ Rao Muhammad Anwer, Salman Khan, Jorma Laak-               biomedical tasks. Nature Medicine, pages 1–13.
+ sonen, and Fahad Khan. 2024. Xraygpt: Chest ra-
+ diographs summarization using large medical vision-
+ language models. In Proceedings of the 23rd work-
+ shop on biomedical natural language processing,
+ pages 440–448.
+Khanh-Tung Tran, Dung Dao, Minh-Duong Nguyen,
+  Quoc-Viet Pham, Barry O’Sullivan, and Hoang D
+  Nguyen. 2025. Multi-agent collaboration mech-
+  anisms: A survey of llms.       arXiv preprint
+  arXiv:2501.06322.
+Junlin Wang, Jue Wang, Ben Athiwaratkun, Ce Zhang,
+  and James Zou. 2024. Mixture-of-agents enhances
+  large language model capabilities. arXiv preprint
+  arXiv:2406.04692.
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten
+   Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou,
+   and 1 others. 2022. Chain-of-thought prompting elic-
+   its reasoning in large language models. Advances
+   in neural information processing systems, 35:24824–
+   24837.
+ML Welch, S Kim, A Hope, SH Huang, Z Lu, J Mar-
+ silla, M Kazmierski, K Rey-McIntyre, T Patel,
+ B O’Sullivan, and 1 others. 2023. Computed to-
+ mography images from large head and neck cohort
+ (radcure). The Cancer Imaging Archive.
+Guangzhi Xiong, Qiao Jin, Zhiyong Lu, and Aidong
+  Zhang. 2024. Benchmarking retrieval-augmented
+                                                     33504
+A    Clinical Impact and Challenges                     the Ensemble Refinement strategy, the moderator
+                                                        agent aggregates all expert responses and assigns
+In Section 6, we discussed the limitations of KA-       weights to each in an effort to produce a more nu-
+MAC. Now, we will explore the clinical implica-         anced consensus. However, as shown in Table 4,
+tions and challenges of multi-agent collaboration.      this approach yields lower performance than Major-
+Adaptive Multi-agent Collaboration Clinical             ity Voting. Specifically, it tends to amplify the in-
+decision-making often involves the emergence of         fluence of individual expert comments and is more
+new information and continuous refinement of di-        susceptible to noise. In contrast, Majority Voting
+agnoses. The dynamic multi-agent framework is           adopts a simpler and more robust mechanism: it
+well-suited to such scenarios, as it enables progres-   treats each expert’s opinion equally and determines
+sive deepening of the diagnostic process and allows     the final decision purely based on vote counts. This
+selective inclusion of additional experts when nec-     strategy effectively mitigates the impact of individ-
+essary. This flexibility helps ensure that complex      ual biases or outlier predictions, resulting in more
+or ambiguous cases receive input from the most          stable performance across diverse cases. Accord-
+relevant specialists, thereby improving diagnostic      ingly, Majority Voting is adopted as the default
+accuracy and comprehensiveness. However, given          consensus strategy in our framework, as it consis-
+the inherent uncertainties associated with large lan-   tently outperforms Ensemble Refinement within
+guage models, the dynamics and stability of the         the KAMAC architecture.
+system in real-world clinical applications warrant
+                                                        B.1   Computational Cost Analysis
+further investigation in future studies.
+                                                        In Section 4, we introduce static multi-agent meth-
+Consensus and Deliberation In clinical practice,        ods, MDAgent and KAMAC, and report their av-
+the effective integration of diverse expert opinions    erage number of experts on two test sets: 5 and 5
+is essential. Our framework facilitates progressive     for static multi-agent methods, 2.41 and 3.34 for
+discussions by starting with a single agent, allow-     MDAgent, and 1.28 and 2.14 for KAMAC. We also
+ing the reasoning process to unfold incrementally       compare inference time, average LLM API calls,
+and making disagreements or uncertainties more          and total cost across single-agent and multi-agent
+explicit. This structure encourages more thorough       methods (Table 5).
+deliberation. It should be noted that we did not           The single-agent CoT baseline uses one expert
+attempt to force consensus among experts; rather,       per case, while static multi-agent methods rely on
+additional experts were introduced selectively to       a fixed pool of five experts, resulting in higher la-
+ensure that the collective recommendations are as       tency, API usage, and cost. These static methods
+comprehensive and well-supported as possible.           lack scalability and fail to balance accuracy and ef-
+                                                        ficiency. In contrast, KAMAC dynamically recruits
+B   More Discussion of KAMAC                            fewer experts (1.28 on average for MedQA), reduc-
+Component Analysis Table 1 also presents a              ing expert usage, API calls, and reasoning time by
+component-wise comparison to evaluate the con-          73–79% compared to static approaches. Compared
+tribution of each module. Specifically, KAMAC           to MDAgent, KAMAC improves accuracy and in-
+extends the baseline (Single-agent + CoT) by inte-      ference speed while reducing expert usage by 47%,
+grating a knowledge gap detection mechanism that        API calls by 24%, and total cost by 21%, demon-
+dynamically recruits multiple experts for collabora-    strating better scalability and cost-effectiveness.
+tive reasoning. This knowledge-aware adaptive col-      B.2   Statistical Analysis
+laboration replaces both the predefined recruitment
+strategy used in majority voting and the problem-       Since the output of the large language model varies
+driven recruitment in MDAgent. KAMAC consis-            greatly across multiple runs, this high variability
+tently outperforms the alternatives across nearly all   affects the direct pairwise comparison between KA-
+evaluation metrics, demonstrating the efficacy of       MAC and MDAgent, affecting the judgment of
+its design.                                             statistical significance. To avoid this, we adopt
+                                                        an alternative statistical significance test strategy.
+Consensus Strategies In this part, we com-              Specifically, we compared the two methods inde-
+pare two consensus strategies: Ensemble Refine-         pendently against a shared baseline configuration
+ment (Singhal et al., 2022) and Majority Voting. In     (single agent + CoT). Then, we repeat the two meth-
+                                                   33505
+Table 4: Discussion on the consensus strategy of the KAMAC method on the MedQA and Progn-VQA datasets.
+Gray-highlighted cells indicate the average score.
+
+                                      MedQA                                     Progn-VQA
+  Consensus Strategy                                           Avg                                          Avg
+                            Acc     Prec Spec       Recall              Acc     Prec Spec         Recall
+ Ensemble Refinement       87.35   87.40    96.83    87.23     89.70    86.27   90.91   49.14     93.06     79.85
+   Majority Voting         88.14   88.30    97.02    88.11     90.39    87.20   89.79   40.52     95.74     78.31
+
+Table 5: Comparison of Baseline, Major Voting, MDAgent, and KAMAC on metrics, expert usage (Number),
+inference time per case (Time (s)), API calls, and cost on the MedQA dataset.
+
+ Method               Acc      Prec     Spec     Recall      Avg       Number    Time (s)       API Calls    Cost
+ Baseline             84.21    84.82    96.03    84.02       87.27        1         9.56          2.20       4.01
+ Majority Voting      86.49    86.93    96.60    86.38       89.10        5        39.88          12.02      8.12
+ MDAgent              87.74    87.92    96.92    87.55       90.03      2.41       15.62          3.34       6.31
+ KAMAC                88.14    88.30    97.02    88.11       90.39      1.28       10.80          2.55       5.01
+
+
+ods three times using the same baseline. Finally,         C     More Details for Progn-VQA Dataset
+each run of KAMAC and MDAgent is subjected to
+                                                          According to the settings of (Welch et al., 2023),
+an independent sample t-test against the baseline,
+                                                          we provide the clinical and imaging information
+covering accuracy, precision, recall, and specificity.
+                                                          required for prognosis in Table 7. This information
+                                                          can fully describe the situation of patients with
+   In Table 6, results consistently demonstrate sta-      head and neck cancer.
+tistically significant improvements over the base-
+                                                          D     Prompt Template
+line (with most p-values < 0.01 and several p-values
+< 0.001). These findings indicate that both KAC-          We provide all prompts in our multi-agent medi-
+MAF and MDAgent achieved substantial perfor-              cal decision-making framework, including expert
+mance gains, with KAC-MAF generally exhibit-              recruitment, initial comments, collaborative discus-
+ing larger standardized improvements and lower            sion, and knowledge-driven prompts. For a single-
+variance across repeated runs. For example, on            agent setting, you can refer to (Kim et al., 2024).
+the MedQA dataset, KAC-MAF yielded higher t-              We also provide a full role-playing prompt (P2).
+statistics for precision (t = 33.05 vs. 15.04) and re-    The example below demonstrates this, with role-
+call (t = 26.15 vs. 13.78), corresponding to lower        specific phrases highlighted in bold.
+p-values (p = 0.0009 and p = 0.0015, respec-                 System: You are a Radiation Oncologist whose
+tively), which reflects more pronounced and con-          expertise is strictly limited to radiation therapy
+sistent improvements relative to the baseline. On         planning and dosing for head and neck squa-
+the Progn-VQA dataset, although both methods              mous cell carcinoma, especially HPV-positive
+produced negative t-statistics for recall, due to the     cases. Your job is to collaborate with other medical
+higher recall achieved by the single-agent CoT            experts in a team.
+baseline, KAC-MAF still attained higher mean re-             User: Given the examplers, as a Radiation On-
+call (0.6092 vs. 0.3164), with a statistically signifi-   cologist, please return your answer to the medical
+cant difference (p = 0.0063). Both methods also           query among the options provided. You are not
+achieved significant gains in accuracy and speci-         allowed to switch to any other medical specialty.
+ficity, with KAC-MAF maintaining more stable                 Response:
+performance characterized by smaller standard de-            Step 1: Initial Assessment of the CT Scan
+viations across runs. Overall, these results confirm      (without bounding box data)
+that KAC-MAF not only achieved statistically sig-            The CT scan is a sagittal view of the head and
+nificant improvements over baseline but also gener-       neck region... cervical vertebrae, the airway (phar-
+ally outperformed MDAgent in terms of both effect         ynx and larynx), and soft tissues of the neck... The
+size and consistency across most evaluated metrics.       airway appears patent but shows narrowing in the
+                                                     33506
+    Table 6: Statistical Significance Comparison of KAMAC and MDAgent vs Baseline: single agent + CoT
+
+ Dataset                                     KAMAC                                           MDAgent
+                 Metric     Mean       Std      t-statistic    p-value     Mean        Std      t-statistic    p-value
+                 Acc       0.8761    0.0016     30.07∗∗       0.0011∗∗     0.8761    0.0011     43.33∗∗∗      0.0005∗∗∗
+                 Prec      0.8765    0.0015     33.05∗∗∗      0.0009∗∗∗    0.8756    0.0032     15.04∗∗       0.0044∗∗
+ MedQA
+                 Recall    0.8748    0.0018     26.15∗∗       0.0015∗∗     0.8725    0.0031     13.78∗∗       0.0052∗∗
+                 Spec      0.9745    0.0076     24.74∗∗       0.0016∗∗     0.9760    0.0098     19.35∗∗       0.0027∗∗
+                 Acc       0.8700    0.0024      14.02∗∗      0.0051∗∗     0.8656    0.0050       5.40∗        0.0327∗
+                 Prec      0.8868    0.0082       6.92∗       0.0202∗      0.8788    0.0077       5.88∗        0.0277∗
+ Progn-VQA
+                 Recall    0.6092    0.0267     –12.59∗∗      0.0063∗∗     0.3164    0.0180     –41.62∗∗∗     0.0006∗∗∗
+                 Spec      0.9790    0.0153      12.26∗∗      0.0066∗∗     0.9548    0.0052      29.47∗∗∗     0.0011∗∗∗
+   Note: ∗ p<0.05; ∗∗ p<0.01; ∗∗∗ p<0.001. Bolded values denote the method with the higher absolute t-statistic (i.e., more
+   significant difference).
+
+
+         Variable                  Description
+         Age                       Patient age
+         Sex                       Patient sex
+         ECOG PS                   ECOG Performance Status
+         Smoking PY                Cumulative smoking exposure (pack-years)
+         Smoking Status            Smoking status at initial consultation
+         Ds Site                   Primary disease (cancer) site
+         Subsite                   Subsite of the primary tumor
+         T                         Tumor size and extent (AJCC 7th edition T category)
+         N                         Regional lymph node involvement (AJCC 7th edition N category)
+         M                         Distant metastasis (AJCC 7th edition M category)
+         Stage                     Overall stage group (AJCC 7th edition)
+         Path                      Pathological diagnosis or histological subtype
+         HPV                       HPV status of the tumor, determined by p16 IHC with or without
+                                   confirmation by HPV DNA PCR (blank if unavailable)
+         Tx Modality               Treatment modality
+         Chemo?                    Whether concurrent chemoradiotherapy was administered
+         Dose                      Total radiotherapy dose delivered (in Gy)
+         Fx                        Number of radiotherapy fractions
+         Local                     Indicator of local recurrence
+         Regional                  Indicator of regional recurrence
+         Distant                   Indicator of distant metastasis
+         2nd Ca                    Indicator of second primary cancer
+         ContrastEnhanced          Indicator of whether contrast-enhanced imaging was used
+
+ Table 7: Descriptions of clinical and imaging variables included in the Progn-VQA dataset (Welch et al., 2023).
+
+
+oropharyngeal region... The masked region of inter-            E    Ethics Considerations
+est (ROI) is located anterior to the cervical spine...
+   Step 3: Clinical Reasoning                                  While our work strictly adheres to established
+   The patient likely has a head and neck squa-                benchmarks in the field of medical question answer-
+mous cell carcinoma (HNSCC)... a common site                   ing, we acknowledge the potential risks associated
+for HPV-related carcinoma... From a radiation on-              with applying large language models (LLMs) to
+cology perspective, delineation of these volumes is            critical domains such as medicine. In particular,
+critical... Airway narrowing may cause symptoms                LLMs may exhibit inherent biases or generate inac-
+such as dysphagia or obstruction...                            curate reasoning, which could lead to unintended
+                                                         33507
+consequences if applied without human oversight.
+Therefore, we emphasize that any deployment of
+such models in real-world medical settings should
+be conducted with caution and accompanied by
+expert validation.
+
+
+
+
+                                               33508
+Expert Recruitment Prompt for MedQA (P1 )
+
+System: You are an experienced medical expert who recruits a group of experts with diverse
+identities and asks them to discuss and solve the given medical query.
+User:
+Question: {{Q UESTION}}
+You can recruit {{NUM _ AGENTS}} experts in different medical expertise.
+Considering the medical question and the options for the answer, what kind of experts will you
+recruit to better make an accurate answer?
+Also, you need to specify the communication structure between experts (e.g., Pulmonologist
+== Neonatologist == Medical Geneticist == Pediatrician > Cardiologist), or indicate if they are
+independent.
+For example, if you want to recruit five experts, your answer can be like:
+1. Pediatrician - Specializes in the medical care of infants, children, and adolescents. - Hierarchy:
+Independent
+2. Cardiologist - Focuses on the diagnosis and treatment of heart and blood vessel-related condi-
+tions. - Hierarchy: Pediatrician > Cardiologist
+3. Pulmonologist - Specializes in the diagnosis and treatment of respiratory system disorders. -
+Hierarchy: Independent
+4. Neonatologist - Focuses on the care of newborn infants, especially those who are born prema-
+turely or have medical issues at birth. - Hierarchy: Independent
+5. Medical Geneticist - Specializes in the study of genes and heredity. - Hierarchy: Independent
+Please answer in the above format, and do not include your reason.
+
+
+
+
+                                               33509
+Expert Recruitment Prompt for Progn-VQA (P1 )
+
+System: You are an experienced medical expert who recruits a group of experts with diverse
+identity and ask them to discuss and solve the given medical query.
+User:
+Question: {{Q UESTION}}
+Considering the medical question and the options for the answer, what kinds of experts will you
+recruit to better make an accurate decision? You also need to clearly specify the communication
+structure between experts or indicate if they are independent.
+You must recruit exactly the following {{NUM _ AGENTS}} experts, with no substitutions, no
+additional experts, and no omissions:
+(e.g., Radiation Oncologist == Medical Oncologist == Pathologist == Surgical Oncologist (Recur-
+rence/Secondary Cancers) == Targeted Therapy Expert),
+Please strictly follow the format shown below, without adding any extra explanation or reasoning.
+Format example if recruiting {{NUM _ AGENTS}} experts:
+1. Radiation Oncologist - Your expertise is strictly limited to radiation therapy planning and dosing
+for head and neck squamous cell carcinoma, especially HPV-positive cases.
+- Hierarchy: Radiation Oncologist == Medical Oncologist
+2. Medical Oncologist - Your expertise is strictly limited to systemic therapy decisions, including
+chemotherapy and immunotherapy in head and neck cancers.
+- Hierarchy: Medical Oncologist == Radiation Oncologist
+3. Surgical Oncologist (Recurrence/Secondary Cancers)—Your expertise is strictly limited to
+evaluating surgical options for recurrent or secondary malignancies in head and neck cancers.
+- Hierarchy: Surgical Oncologist == Pathologist"
+4. Pathologist - Your expertise is strictly limited to pathological diagnosis of head and neck
+squamous cell carcinoma, HPV status evaluation, and margin assessment post-surgery.
+- Hierarchy: Pathologist == Surgical Oncologist
+5. Targeted Therapy Expert - Your expertise is strictly limited to clinical application of EGFR
+inhibitors and novel agents targeting HPV-positive tumors.
+- Hierarchy: Targeted Therapy Expert -> Medical Oncologist
+Your answer must conform exactly to the format above.
+
+
+
+
+Chain-of-thought Prompt for Initial Assessment (P2 )
+
+System: You are a {{ROLE}} who {{DESCRIPTION}}. Your job is to collaborate with other
+medical experts in a team.
+User: {{VISUAL COT INSTRUCTION}} (Optional)
+Given the examplers, as a {{ROLE}}, please return your answer to the medical query among the
+options provided. You are not allowed to switch to any other medical specialty.
+{{FEWSHOT _ EXAMPLERS}}
+Question: {{Q UESTION}}
+Your answer should be in the format below.
+{{answer_template}}
+
+
+
+
+                                               33510
+Visual Chain-of-thought Prompt for Head and Neck CT Scan (Optional, only be used when input
+data include images.)
+
+User: You will be provided with a head and neck CT scan that includes one or more masked
+regions of interest (ROIs). Alongside the scan, one or more 3D bounding box coordinates will be
+supplied, each defining specific volumetric regions within the scan. These coordinates identify
+either organs, disease regions, or cellular structures. Each bounding box is defined by its minimum
+and maximum values along the z, y, and x axes and is normalized relative to the original image
+size.
+The given bounding box coordinates are: {{BBOX _ COORDS}}.
+Task Instructions:
+1. Initial Assessment: Carefully analyze the CT scan image (without using the bounding box data).
+Describe any visible anatomical structures, patterns, abnormalities, and note the characteristics of
+the masked regions of interest (ROIs).
+Do not use the bounding box data at this stage.
+2. Mapping Bounding Boxes: Consider the bounding box coordinates and map them to the
+corresponding areas within the scan.
+3. Clinical Reasoning: Summarize the patient’s clinical context and findings in a clear, structured
+bullet-point format and reason through the patient’s condition step by step.
+4. Integrated Conclusion: Combine your findings from the image analysis, bounding box
+mapping, and masked ROI to concisely synthesize your final clinical impression.
+Be thorough and precise in both your image-based observations and your clinical reasoning.
+
+
+
+
+Agent Interaction Prompt (P3 )
+
+User: Earlier in this conversation, a set of discussion opinions from other medical experts on your
+team was provided. Please do not forget those earlier opinions.
+Now, additional new opinions have been provided. Considering both the earlier and the latest
+opinions together, please indicate whether you want to talk to any additional expert (yes/no).
+Opinions: {{ASSESSMENT}}
+
+
+
+
+Knowledge-driven Prompt for Recruited Experts (P4 )
+
+User: You are part of the team: {{AGENTS}}. Earlier in this conversation, a set of discussion
+opinions from one or more medical experts on your team was provided. Please carefully review that
+information now. Based on your professional boundaries, determine whether there is a knowledge
+limitation or missing perspective that requires support from another specialist.
+Please answer yes or no.
+If yes, specify the type of expert needed and provide a short reason. Be specific and consider
+the multidisciplinary needs involved in managing complex patient information (e.g., diagnostic
+imaging, supportive care, pathology review, and other medical expertise).
+It is acceptable to recognize areas of expertise already covered by current team members
+({{AGENTS}}).
+Do not recommend a specialist if their expertise is already represented in the team.
+
+
+
+                                              33511
+Knowledge-driven Prompt for Expert Recruitment (P5 )
+
+User: Considering the medical question, discussion options, and the current expert team
+{{AGENTS}}, identify any that require recruiting new types of experts to ensure an accurate
+decision (exclude {{AGENTS}}).
+You also need to clearly specify the communication structure between experts (e.g. Targeted
+Therapy Expert -> Medical Oncologist, Medical Oncologist == Radiation Oncologist)" or indicate
+if the new expert(s) will work independently.
+Do not suggest removing, substituting, or duplicating existing experts. Only add new experts if
+necessary.
+Format example if recruiting experts:
+1. Medical Oncologist - Your expertise is strictly limited to systemic therapy decisions, including
+chemotherapy and immunotherapy in head and neck cancers. - Hierarchy: Independent
+2. Other Medical Experts.
+Your answer must conform exactly to the format above. If the existing expert team comprehensively
+have covered the necessary expertise for accurate decision, answer: <skip recruitment>
+
+
+
+
+Agent Update Comments after Discussion Prompt (P6 )
+
+User: Now that you’ve interacted with other medical experts, remind your expertise and the
+comments from other experts and make your final answer to the given question:{{QUESTION}}
+Answer: {{ANSWER _ TEMPLATE}}
+Only output your final answer in the format below:
+{{FINAL _ ANSWER _ TEMPLATE}}
+Question: {{QUESTION}}
+
+
+
+
+Final Decision Prompt (P7 )
+
+System: You are a final medical decision maker who reviews all opinions from different medical
+experts and make final decision.
+User: Given each agent’s final answer, please review each agent’s opinion and make the final
+answer to the question by taking a majority vote.
+Only output your final answer in the format below:
+{{FINAL _ ANSWER _ TEMPLATE}}
+Question: {{QUESTION}}
+
+
+
+
+                                              33512
+

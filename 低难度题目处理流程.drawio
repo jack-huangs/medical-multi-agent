@@ -1,0 +1,77 @@
+<mxfile host="app.diagrams.net" modified="2026-09-16T12:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="basic-medical-flow" name="低难度题目处理流程">
+    <mxGraphModel dx="1200" dy="1800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="start" value="开始：处理一条测试题&lt;br&gt;main.py 读取 question、examplers、args" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="380" y="20" width="410" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="question" value="create_question(sample, dataset)&lt;br&gt;MedQA 拼接题目和选项&lt;br&gt;选项顺序随机打乱；不调用模型" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="380" y="130" width="410" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="difficulty" value="difficulty 参数" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="485" y="250" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="basic" value="进入低难度 basic 流程" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="380" y="390" width="410" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="adaptive" value="adaptive：创建分诊 Agent&lt;br&gt;&lt;br&gt;System Prompt：&lt;br&gt;You are a medical expert who conducts initial assessment and your job is to decide the difficulty/complexity of the medical query." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="850" y="225" width="430" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="adaptivePrompt" value="分诊判断 Prompt：&lt;br&gt;&lt;br&gt;Now, given the medical query as below, you need to decide the difficulty/complexity of it: {question}.&lt;br&gt;&lt;br&gt;Please indicate：1) basic  2) intermediate  3) advanced" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="850" y="390" width="430" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="adaptiveResult" value="模型返回 basic 后进入低难度流程" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="850" y="555" width="430" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="reasonAgent" value="创建示例理由 Agent&lt;br&gt;&lt;br&gt;System Prompt：&lt;br&gt;You are a helpful medical agent." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="380" y="500" width="410" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="samples" value="从 train.jsonl 随机抽取 5 条示例&lt;br&gt;&lt;br&gt;题目、选项、answer_idx、answer 来自已有数据集" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="380" y="640" width="410" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="examplePrompt" value="循环 5 次：实时生成示例理由&lt;br&gt;&lt;br&gt;Prompt：&lt;br&gt;You are a helpful medical agent. Below is an example of medical knowledge question and answer. After reviewing the below medical question and answering, can you provide 1-2 sentences of reason that support the answer as you didn't know the answer ahead?&lt;br&gt;&lt;br&gt;Question: {exampler_question}&lt;br&gt;Answer: {exampler_answer}" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="310" y="770" width="550" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="fewshot" value="保存 new_examplers&lt;br&gt;&lt;br&gt;每条示例 = 示例题 + 数据集标准答案 + 模型实时生成的理由&lt;br&gt;&lt;br&gt;得到 5 个 Few-shot 示例" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="380" y="970" width="410" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="answerAgent" value="创建真正的答题 Agent&lt;br&gt;&lt;br&gt;System Prompt：&lt;br&gt;You are a helpful assistant that answers multiple choice questions about medical knowledge." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1120" width="410" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="history" value="初始化对话历史&lt;br&gt;&lt;br&gt;user：5 个示例题&lt;br&gt;assistant：每题的正确答案 + 示例理由&lt;br&gt;&lt;br&gt;此步骤本身不额外调用模型" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1280" width="410" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="roleConfirm" value="角色确认模型调用&lt;br&gt;&lt;br&gt;Prompt：&lt;br&gt;You are a helpful assistant that answers multiple choice questions about medical knowledge.&lt;br&gt;&lt;br&gt;会额外消耗 1 次 API 调用" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1435" width="410" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="finalPrompt" value="回答当前新问题：single_agent.temp_responses(...)&lt;br&gt;&lt;br&gt;Final Prompt：&lt;br&gt;The following are multiple choice questions (with answers) about medical knowledge. Let's think step by step.&lt;br&gt;&lt;br&gt;**Question:** {question}&lt;br&gt;Answer:&lt;br&gt;&lt;br&gt;temperature = 0.0；这里生成的是当前新问题的答案" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1595" width="570" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="result" value="返回并保存结果&lt;br&gt;&lt;br&gt;{0.0: 当前新问题的模型回答}&lt;br&gt;&lt;br&gt;main.py 保存：question、label、answer、options、response、difficulty" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="380" y="1790" width="410" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" edge="1" parent="1" source="start" target="question" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e2" edge="1" parent="1" source="question" target="difficulty" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e3" value="basic" edge="1" parent="1" source="difficulty" target="basic" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e4" value="adaptive" edge="1" parent="1" source="difficulty" target="adaptive" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e5" edge="1" parent="1" source="adaptive" target="adaptivePrompt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e6" edge="1" parent="1" source="adaptivePrompt" target="adaptiveResult" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e7" edge="1" parent="1" source="adaptiveResult" target="reasonAgent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e8" edge="1" parent="1" source="basic" target="reasonAgent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e9" edge="1" parent="1" source="reasonAgent" target="samples" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e10" edge="1" parent="1" source="samples" target="examplePrompt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e11" edge="1" parent="1" source="examplePrompt" target="fewshot" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e12" edge="1" parent="1" source="fewshot" target="answerAgent" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e13" edge="1" parent="1" source="answerAgent" target="history" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e14" edge="1" parent="1" source="history" target="roleConfirm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e15" edge="1" parent="1" source="roleConfirm" target="finalPrompt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+        <mxCell id="e16" edge="1" parent="1" source="finalPrompt" target="result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

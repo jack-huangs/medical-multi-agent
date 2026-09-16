@@ -1,0 +1,104 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="basic-medical-flow" name="低难度题目处理流程">
+    <mxGraphModel dx="4096" dy="2629" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-1" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=23;fontStyle=1;strokeWidth=3;" value="MDAgents — Basic / 低难度题目处理流程" vertex="1">
+          <mxGeometry height="35" width="1710" x="-1428" y="-1108.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-2" parent="1" style="swimlane;html=1;rounded=1;startSize=32;fillColor=#dae8fc;swimlaneFillColor=#6c8ebf;fontColor=#ffffff;fontStyle=1;fontSize=17;strokeWidth=3;" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;1. PREPARE FEW-SHOT EXAMPLES / 准备示例&lt;/span&gt;" vertex="1">
+          <mxGeometry height="415" width="510" x="-1428" y="-1053.33" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontStyle=1;strokeWidth=3;fontSize=17;" value="输入 / Input&lt;br&gt;当前 MedQA 题目 + 选项" vertex="1">
+          <mxGeometry height="50" width="450" x="-1398" y="-998.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="89-dd3Uj0iwIXqgljjeS-44" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="GC5XfRd5yv6N_1u7hsQT-3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;align=left;spacingLeft=8;spacingRight=8;strokeWidth=3;fontSize=17;fontStyle=1" value="创建 Medical Agent / 医学智能体&lt;br&gt;&lt;i&gt;You are a helpful medical agent.&lt;/i&gt;" vertex="1">
+          <mxGeometry height="65" width="450" x="-1398" y="-918.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;strokeWidth=3;fontSize=17;fontStyle=1" value="随机抽取 5 条 MedQA 训练题&lt;br&gt;随机打乱每题选项 / Randomize option order" vertex="1">
+          <mxGeometry height="60" width="450" x="-1398" y="-823.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;fontSize=17;fontStyle=1" value="准备每题已知正确答案&lt;br&gt;&lt;i&gt;Answer: ({answer_idx}) {answer}&lt;/i&gt;" vertex="1">
+          <mxGeometry height="60" width="450" x="-1398" y="-733.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-7" parent="1" style="swimlane;html=1;rounded=1;startSize=32;fillColor=#d5e8d4;swimlaneFillColor=#82b366;fontColor=#ffffff;fontStyle=1;fontSize=17;strokeWidth=3;" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;2. GENERATE RATIONALES / 生成示例理由&lt;/span&gt;" vertex="1">
+          <mxGeometry height="553.33" width="590" x="-883" y="-1053.33" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontStyle=1;strokeWidth=3;fontSize=17;" value="对 5 个示例逐题调用 Medical Agent" vertex="1">
+          <mxGeometry height="50" width="530" x="-853" y="-998.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;align=left;spacingLeft=8;spacingRight=8;strokeWidth=3;fontSize=17;fontStyle=1" value="&lt;span&gt;Rationale prompt / 理由提示词&lt;/span&gt;&lt;br&gt;&lt;i&gt;You are a helpful medical agent. Below is an example of medical knowledge question and answer. After reviewing the below medical question and answering, can you provide 1-2 sentences of reason that support the answer as you didn&#39;t know the answer ahead?&lt;/i&gt;&lt;br&gt;&lt;i&gt;Question: {example_question}&lt;br&gt;Answer: ({answer_idx}) {answer}&lt;/i&gt;" vertex="1">
+          <mxGeometry height="180" width="530" x="-853" y="-918.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;strokeWidth=3;fontSize=17;" value="输出 / Output&lt;br&gt;每题：题目 + 正确答案 + 1–2 句医学理由" vertex="1">
+          <mxGeometry height="65" width="530" x="-853" y="-703.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;strokeWidth=3;fontSize=17;fontStyle=1" value="组合为 5-shot examples&lt;br&gt;将示例写入下一位 Agent 的 messages 历史" vertex="1">
+          <mxGeometry height="65" width="530" x="-853" y="-603.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-12" parent="1" style="swimlane;html=1;rounded=1;startSize=32;fillColor=#fff2cc;swimlaneFillColor=#d6b656;fontColor=#ffffff;fontStyle=1;fontSize=17;strokeWidth=3;" value="&lt;span style=&quot;color: rgb(0, 0, 0);&quot;&gt;3. SINGLE-AGENT ANSWER / 单智能体作答&lt;/span&gt;" vertex="1">
+          <mxGeometry height="620" width="540" x="-258" y="-1053.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontStyle=1;strokeWidth=3;fontSize=17;" value="创建 Single Agent / 单专家智能体" vertex="1">
+          <mxGeometry height="50" width="480" x="-228" y="-998.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=left;spacingLeft=8;spacingRight=8;strokeWidth=3;fontSize=17;fontStyle=1" value="&lt;span&gt;System prompt / 系统提示词&lt;/span&gt;&lt;br&gt;&lt;i&gt;You are a helpful assistant that answers multiple choice questions about medical knowledge.&lt;/i&gt;&lt;br&gt;同时载入 5 个示例的题目、答案与理由" vertex="1">
+          <mxGeometry height="105" width="480" x="-228" y="-918.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;align=left;spacingLeft=8;spacingRight=8;strokeWidth=3;fontSize=17;fontStyle=1" value="&lt;span&gt;Final-answer prompt / 最终作答提示词&lt;/span&gt;&lt;br&gt;&lt;i&gt;The following are multiple choice questions (with answers) about medical knowledge. Let&#39;s think step by step.&lt;/i&gt;&lt;br&gt;&lt;i&gt;Question: {question}&lt;br&gt;Answer:&lt;/i&gt;" vertex="1">
+          <mxGeometry height="155" width="480" x="-228" y="-778.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;strokeWidth=3;fontSize=17;" value="输出 / Output&lt;br&gt;单专家最终回答&lt;br&gt;temperature = 0.0" vertex="1">
+          <mxGeometry height="70" width="480" x="-228" y="-583.3333333333333" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-17" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-18" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-19" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-20" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;libavoidRouting=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-8">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-900" y="-703" />
+              <mxPoint x="-900" y="-973" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-21" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-22" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-10" value="× 5 examples">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-23" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-24" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;libavoidRouting=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-13">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-275" y="-571" />
+              <mxPoint x="-275" y="-973" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-25" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-26" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="GC5XfRd5yv6N_1u7hsQT-27" edge="1" parent="1" source="GC5XfRd5yv6N_1u7hsQT-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeWidth=3;fontSize=17;fontStyle=1" target="GC5XfRd5yv6N_1u7hsQT-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
