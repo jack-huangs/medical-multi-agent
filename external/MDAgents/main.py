@@ -20,7 +20,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='medqa')
 parser.add_argument('--model', type=str, default='gpt-4o-mini')
 parser.add_argument('--difficulty', type=str, default='adaptive')
-parser.add_argument('--num_samples', type=int, default=100)
+parser.add_argument(
+    '--num_samples',
+    type=int,
+    default=100,
+    help='Randomly select this many distinct questions from the test set (default: 100).',
+)
 parser.add_argument('--verbose', action='store_true', help='Print model-call progress while writing a detailed JSONL trace.')
 args = parser.parse_args()
 
@@ -28,32 +33,37 @@ args = parser.parse_args()
 path = os.path.join(os.getcwd(), 'output')
 os.makedirs(path, exist_ok=True)
 run_timestamp = datetime.now().strftime('%d-%H%M%S')
-short_result_path = os.path.join(path, f'{args.model}_{args.dataset}_{args.difficulty}.json')
-run_name = f'{args.model}_{args.dataset}_{args.difficulty}_{run_timestamp}'
-full_result_path = os.path.join(path, f'{run_name}.json')
-trace_path = os.path.join(path, f'{run_name}_trace.jsonl')
+short_result_path = os.path.join(path, f'{args.difficulty}_result.json')
+trace_path = os.path.join(path, f'{args.difficulty}_detailed_log_{run_timestamp}.jsonl')
 configure_trace_log(trace_path, verbose=args.verbose)
 trace_event(
     'run_started',
     arguments=vars(args),
     short_result_file=os.path.abspath(short_result_path),
-    full_result_file=os.path.abspath(full_result_path),
 )
 
 # 启动时先验证模型配置，再一次性读取测试题和训练示例题。
 # client 在当前文件中未直接使用；实际请求由 utils.py 内的 Agent 发出。
 model, client = setup_model(args.model)
 test_qa, examplers = load_data(args.dataset)
+if args.num_samples < 1:
+    parser.error('--num_samples must be at least 1.')
+if args.num_samples > len(test_qa):
+    parser.error(
+        f'--num_samples cannot exceed the {len(test_qa)} available test questions.'
+    )
+
+# 每次运行均从测试集无放回随机抽题；因此 --num_samples 1 表示随机抽取一道题。
+selected_samples = random.sample(test_qa, k=args.num_samples)
+print(f'[INFO] randomly selected {len(selected_samples)} test question(s).')
+trace_event('samples_selected', count=len(selected_samples), sampling='random_without_replacement')
 
 agent_emoji = ['\U0001F468\u200D\u2695\uFE0F', '\U0001F468\U0001F3FB\u200D\u2695\uFE0F', '\U0001F469\U0001F3FC\u200D\u2695\uFE0F', '\U0001F469\U0001F3FB\u200D\u2695\uFE0F', '\U0001f9d1\u200D\u2695\uFE0F', '\U0001f9d1\U0001f3ff\u200D\u2695\uFE0F', '\U0001f468\U0001f3ff\u200D\u2695\uFE0F', '\U0001f468\U0001f3fd\u200D\u2695\uFE0F', '\U0001f9d1\U0001f3fd\u200D\u2695\uFE0F', '\U0001F468\U0001F3FD\u200D\u2695\uFE0F']
 random.shuffle(agent_emoji)
 
 # 每道题的完整输入、标准答案、模型回答和所选协作模式都会收集在这里。
 results = []
-for no, sample in enumerate(tqdm(test_qa)):
-    if no == args.num_samples:
-        break
-    
+for no, sample in enumerate(tqdm(selected_samples), start=1):
     print(f"\n[INFO] no: {no}")
     total_api_calls = 0
 
@@ -86,14 +96,10 @@ for no, sample in enumerate(tqdm(test_qa)):
 # 运行目录为 external/MDAgents 时，结果与逐次调用日志均写到 output/ 下。
 with open(short_result_path, 'w', encoding='utf-8') as file:
     json.dump(results, file, indent=4)
-with open(full_result_path, 'w', encoding='utf-8') as file:
-    json.dump(results, file, indent=4)
 trace_event(
     'run_finished',
     samples_completed=len(results),
     short_result_file=os.path.abspath(short_result_path),
-    full_result_file=os.path.abspath(full_result_path),
 )
 print(f'[INFO] result: {short_result_path}')
-print(f'[INFO] full result: {full_result_path}')
 print(f'[INFO] trace: {trace_path}')

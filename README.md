@@ -98,12 +98,13 @@ Pop-Location
 python main.py --model deepseek-flash --dataset medqa --difficulty basic --num_samples 1 --verbose
 ```
 
+`--num_samples 1` 会从测试集**随机、无放回**抽取一道题；每次运行通常会抽到不同题目。`--num_samples 10` 则随机抽取 10 道不重复的题。
+
 运行结果会写入 `external/MDAgents/output/`。每次运行会生成：
 
-- `{model}_{dataset}_{difficulty}.json`：最新一轮的简化结果文件，每次同配置运行会更新它；
-- `{model}_{dataset}_{difficulty}_{day-time}.json`：本轮结果的完整归档，时间戳避免覆盖历史实验；
-- `{model}_{dataset}_{difficulty}_{day-time}_trace.jsonl`：本轮逐次 Agent 调用的结构化追踪日志。日志不包含 API key。
+- `{difficulty}_result.json`：结果文件，每次同难度运行都会更新它；
+- `{difficulty}_detailed_log_{day-time}.jsonl`：本轮逐次 Agent 调用的结构化详细日志。日志不包含 API key。
 
-例如，15 日 14:30:25 开始的基础 MedQA 实验会先生成 `deepseek-flash_medqa_basic.json`，再归档为 `deepseek-flash_medqa_basic_15-143025.json`，并写入对应的 `_trace.jsonl` 日志。
+例如，15 日 14:30:25 开始的基础题实验会生成 `basic_result.json`，并写入 `basic_detailed_log_15-143025.jsonl`。
 
 根目录 `.gitignore` 已忽略 `.env`、`.venv`、`data/`、`output/`、`runs/`、`results/` 和 `logs/` 等本地实验产物。
