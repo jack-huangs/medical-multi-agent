@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 SEED = 20260923
 
 
@@ -48,7 +48,7 @@ def main():
         raise SystemExit("Need at least 305 distinct development and demonstration examples.")
     selected = random.Random(SEED).sample(eligible, 305)
     groups = {"pilot_100": selected[:100], "reserve_200": selected[100:300], "demonstrations_5": selected[300:]}
-    out = ROOT / "runs/consensus_pilot_20260923"
+    out = ROOT / "baselines/mdagents/runs/consensus_pilot_20260923"
     if out.exists():
         raise SystemExit(f"Refusing to replace a frozen pilot: {out}")
     assert len({sample_id for _, sample_id, _ in selected}) == 305

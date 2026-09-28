@@ -1,0 +1,49 @@
+"""One-time path migration; historical experiment snapshots are intentionally immutable."""
+from pathlib import Path
+import ast
+
+ROOT = Path(__file__).resolve().parents[1]
+
+def edit(relative, replacements):
+    path = ROOT / relative
+    text = path.read_text(encoding='utf-8-sig')
+    for old, new in replacements:
+        text = text.replace(old, new)
+    path.write_text(text, encoding='utf-8')
+
+legacy = ROOT / 'baselines/mdagents/scripts'
+for path in legacy.glob('*.py'):
+    edit(path.relative_to(ROOT), [
+        ('Path(__file__).resolve().parents[1]', 'Path(__file__).resolve().parents[3]'),
+        ('external/MDAgents', 'baselines/mdagents/upstream'),
+        ('runs/consensus_pilot_20260923', 'baselines/mdagents/runs/consensus_pilot_20260923'),
+        ('ROOT / "external" / "MDAgents"', 'ROOT / "baselines/mdagents/upstream"'),
+    ])
+edit('baselines/mdagents/scripts/run_consensus_pilot.py', [
+    ('from run_safety import', "sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts'))\nfrom run_safety import")])
+edit('baselines/mdagents/scripts/create_basic_xmind.py', [
+    ('/ "低难度题目处理流程.xmind"', '/ "baselines/mdagents/docs/低难度题目处理流程.xmind"')])
+edit('baselines/mdagents/upstream/utils.py', [('Path(__file__).resolve().parents[2]', 'Path(__file__).resolve().parents[3]')])
+edit('baselines/mdagents/upstream/main.py', [('external/MDAgents', 'baselines/mdagents/upstream')])
+edit('scripts/prepare_evidence_pilot.py', [('runs/consensus_pilot_20260923', 'baselines/mdagents/runs/consensus_pilot_20260923')])
+# Keep shared statistics independent of the archived baseline runner.
+source = (legacy / 'run_consensus_pilot.py').read_text(encoding='utf-8')
+tree = ast.parse(source)
+fn = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'wilson')
+(ROOT / 'scripts/evaluation_stats.py').write_text('"""Shared offline evaluation statistics."""\nimport math\n\n' + ast.get_source_segment(source, fn) + '\n', encoding='utf-8')
+edit('scripts/score_difficulty_probe.py', [('from run_consensus_pilot import wilson', 'from evaluation_stats import wilson')])
+edit('references/presentations/build_deck.mjs', [
+    ('"build/pptx"', '"references/presentations/build"'),
+    ('"output/pptx/', '"references/presentations/versions/')])
+# Documentation commands refer to the new paths; raw logs/configs/source snapshots stay untouched.
+for path in list((ROOT / 'docs').glob('*.md')) + list((ROOT / 'baselines/mdagents').glob('*.md')) + list((ROOT / 'baselines/mdagents/docs').glob('*.md')):
+    changes = [('external/MDAgents', 'baselines/mdagents/upstream'), ('external\\MDAgents', 'baselines\\mdagents\\upstream'),
+               ('runs/consensus_pilot_20260923', 'baselines/mdagents/runs/consensus_pilot_20260923')]
+    for name in [p.name for p in legacy.glob('*.py')]:
+        changes.extend([(f'scripts/{name}', f'baselines/mdagents/scripts/{name}'), (f'scripts\\{name}', f'baselines\\mdagents\\scripts\\{name}')])
+    edit(path.relative_to(ROOT), changes)
+edit('baselines/mdagents/README.md', [
+    ('-f environment.yml', '-f baselines/mdagents/environment.yml'),
+    ('-r requirements.txt', '-r baselines/mdagents/requirements.txt'),
+    ('`docs/reproduction-log.md`', '`baselines/mdagents/docs/reproduction-log.md`')])
+print('Live code and documentation paths migrated; raw experiment files unchanged.')

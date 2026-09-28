@@ -1,5 +1,6 @@
 import json
 import random
+import re
 import time
 from itertools import count
 from pathlib import Path
@@ -13,7 +14,7 @@ from dotenv import dotenv_values
 from pptree import *
 
 # 所有凭据仅从项目根目录的 .env 文件读取，不会读取或修改系统环境变量。
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ENV_FILE = PROJECT_ROOT / '.env'
 CONFIG = dotenv_values(ENV_FILE)
 TRACE_LOGGER = None
@@ -162,6 +163,9 @@ class Agent:
             'model_response',
             **request_fields,
             response=content,
+            resolved_model=model_name,
+            response_model=getattr(response, 'model', None),
+            usage=response.usage.model_dump() if response.usage is not None else None,
             duration_seconds=time.perf_counter() - started_at,
         )
         return content
@@ -400,14 +404,12 @@ def determine_difficulty(question, difficulty, model):
     # 用一个独立 Agent 充当“分诊员”，它的输出决定后续花费多少模型调用。
     medical_agent = Agent(instruction='You are a medical expert who conducts initial assessment and your job is to decide the difficulty/complexity of the medical query.', role='medical expert', model_info=model)
     medical_agent.chat('You are a medical expert who conducts initial assessment and your job is to decide the difficulty/complexity of the medical query.')#多余可删
-    response = medical_agent.chat(difficulty_prompt)
+    response = medical_agent.chat(difficulty_prompt + "\nReturn exactly one label: basic, intermediate, or advanced. Do not list the alternatives.")
 
-    if 'basic' in response.lower() or '1)' in response.lower():
-        return 'basic'
-    elif 'intermediate' in response.lower() or '2)' in response.lower():
-        return 'intermediate'
-    elif 'advanced' in response.lower() or '3)' in response.lower():
-        return 'advanced'
+    labels = set(re.findall(r'\b(basic|intermediate|advanced)\b', response.lower()))
+    if len(labels) == 1:
+        return labels.pop()
+    raise ValueError('Difficulty routing did not return one unambiguous label.')
 
 def process_basic_query(question, examplers, model, args):
     """基础题：生成 5 个带理由的示例，然后由单个专家完成选择题。"""
@@ -527,9 +529,22 @@ def process_intermediate_query(question, examplers, model, args):
         initial_report += f"({k.lower()}): {opinion}\n"
         round_opinions[1][k.lower()] = opinion
 
-    final_answer = None
+    # 即使无人发言，主持者也应得到已有初诊意见。
+    final_answer = dict(round_opinions[1])
+    trace_event('expert_opinions', stage='initial', opinions=final_answer)
+
+    def incoming_comments(target, through_round):
+        return "\n".join(
+            f"{round_key}/{turn_key} {source} -> Agent {target}: {targets[f'Agent {target}']}"
+            for round_key, turns in interaction_log.items()
+            if int(round_key.split()[-1]) <= through_round
+            for turn_key, sources in turns.items()
+            for source, targets in sources.items()
+            if targets[f'Agent {target}'] is not None
+        )
     # 每轮先汇总现有观点，再由专家决定是否向某位同行定向发言；无人想继续时提前结束。
     for n in range(1, num_rounds+1):
+        round_had_messages = False
         print(f"== Round {n} ==")
         round_name = f"Round {n}"
         agent_rs = Agent(instruction="You are a medical assistant who excels at summarizing and synthesizing based on multiple experts from various domain experts.", role="medical assistant", model_info=model)
@@ -545,20 +560,22 @@ def process_intermediate_query(question, examplers, model, args):
 
             num_yes = 0
             for idx, v in enumerate(medical_agents):
-                all_comments = "".join(f"{_k} -> Agent {idx+1}: {_v[f'Agent {idx+1}']}\n" for _k, _v in interaction_log[round_name][turn_name].items())
+                all_comments = incoming_comments(idx + 1, n)
                 
-                participate = v.chat("Given the opinions from other medical experts in your team, please indicate whether you want to talk to any expert (yes/no)\n\nOpinions:\n{}".format(assessment if n == 1 else all_comments))
+                participate = v.chat("Given the opinions from other medical experts in your team, please indicate whether you want to talk to any expert (yes/no)\n\nOpinions:\n{}\n\nMessages addressed to you:\n{}".format(assessment, all_comments))
                 
                 if 'yes' in participate.lower().strip():                
                     chosen_expert = v.chat(f"Enter the number of the expert you want to talk to:\n{agent_list}\nFor example, if you want to talk with Agent 1. Pediatrician, return just 1. If you want to talk with more than one expert, please return 1,2 and don't return the reasons.")
                     
-                    chosen_experts = [int(ce) for ce in chosen_expert.replace('.', ',').split(',') if ce.strip().isdigit()]
+                    chosen_experts = list(dict.fromkeys(int(ce) for ce in re.findall(r'\d+', chosen_expert)
+                                                       if 1 <= int(ce) <= num_agents and int(ce) != idx + 1))
 
                     for ce in chosen_experts:
                         specific_question = v.chat(f"Please remind your medical expertise and then leave your opinion to an expert you chose (Agent {ce}. {medical_agents[ce-1].role}). You should deliver your opinion once you are confident enough and in a way to convince other expert with a short reason.")
                         
                         print(f" Agent {idx+1} ({agent_emoji[idx]} {medical_agents[idx].role}) -> Agent {ce} ({agent_emoji[ce-1]} {medical_agents[ce-1].role}) : {specific_question}")
                         interaction_log[round_name][turn_name][f'Agent {idx+1}'][f'Agent {ce}'] = specific_question
+                        round_had_messages = True
                 
                     num_yes += 1
                 else:
@@ -567,16 +584,21 @@ def process_intermediate_query(question, examplers, model, args):
             if num_yes == 0:
                 break
         
-        if num_yes == 0:
+        if not round_had_messages:
             break
 
         tmp_final_answer = {}
         for i, agent in enumerate(medical_agents):
-            response = agent.chat(f"Now that you've interacted with other medical experts, remind your expertise and the comments from other experts and make your final answer to the given question:\n{question}\nAnswer: ")
+            response = agent.chat(f"Now that you've interacted with other medical experts, remind your expertise and the comments from other experts and make your final answer to the given question:\n{question}\n\nMessages addressed to you:\n{incoming_comments(i + 1, n)}\nAnswer: ")
             tmp_final_answer[agent.role] = response
 
         round_answers[round_name] = tmp_final_answer
         final_answer = tmp_final_answer
+        trace_event('expert_opinions', stage=f'round_{n}', opinions=final_answer)
+        if n < num_rounds:
+            round_opinions[n + 1] = dict(tmp_final_answer)
+        if num_yes == 0:
+            break
 
     print('\nInteraction Log')        
     myTable = PrettyTable([''] + [f"Agent {i+1} ({agent_emoji[i]})" for i in range(len(medical_agents))])

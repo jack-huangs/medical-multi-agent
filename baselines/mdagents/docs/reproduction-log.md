@@ -53,7 +53,7 @@ Python 3.12.14
 优先尝试官方仓库：
 
 ```powershell
-git clone https://github.com/mitmedialab/MDAgents external/MDAgents
+git clone https://github.com/mitmedialab/MDAgents baselines/mdagents/upstream
 ```
 
 失败结果：
@@ -66,7 +66,7 @@ fatal: remote helper 'https' aborted session
 使用 Codex 运行时 Git 再试，结果相同。随后尝试 `curl.exe` 下载源码压缩包：
 
 ```powershell
-curl.exe -L https://github.com/mitmedialab/MDAgents/archive/refs/heads/main.zip -o external\MDAgents-main.zip
+curl.exe -L https://github.com/mitmedialab/MDAgents/archive/refs/heads/main.zip -o baselines\mdagents\upstream-main.zip
 ```
 
 失败结果：
@@ -78,14 +78,14 @@ curl: (35) schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS (0x80
 改用 Codex Python 的 HTTPS 栈下载成功：
 
 ```powershell
-& 'C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -c "import urllib.request; url='https://github.com/mitmedialab/MDAgents/archive/refs/heads/main.zip'; out=r'external\MDAgents-main.zip'; print('downloading', url); urllib.request.urlretrieve(url, out); print('saved', out)"
-tar.exe -xf external\MDAgents-main.zip -C external
-Rename-Item external\MDAgents-main MDAgents
+& 'C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -c "import urllib.request; url='https://github.com/mitmedialab/MDAgents/archive/refs/heads/main.zip'; out=r'baselines\mdagents\upstream-main.zip'; print('downloading', url); urllib.request.urlretrieve(url, out); print('saved', out)"
+tar.exe -xf baselines\mdagents\upstream-main.zip -C external
+Rename-Item baselines\mdagents\upstream-main MDAgents
 ```
 
 结果：
 
-- 源码已放置在 `external/MDAgents`。
+- 源码已放置在 `baselines/mdagents/upstream`。
 - 官方项目包含 `main.py`、`utils.py`、`requirements.txt`、论文 PDF 和图片资源。
 - 尝试用 GitHub API 查询 `main` 提交 SHA 时收到 `HTTP Error 403: rate limit exceeded`，因此本记录不声明精确提交 SHA。
 
@@ -164,7 +164,7 @@ No broken requirements found.
 导入检查：
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\health_check.py --check-env-name
+.\.venv\Scripts\python.exe baselines\mdagents\scripts\health_check.py --check-env-name
 ```
 
 结果：
@@ -180,13 +180,13 @@ OK import climage
 OK import utils
 OK .env.example documents DEEPSEEK_API_KEY
 OK no API key value was read
-OK upstream source: C:\Users\Administrator\Documents\ChatGPT\multi-agent医疗专家团\external\MDAgents
+OK upstream source: C:\Users\Administrator\Documents\ChatGPT\multi-agent医疗专家团\baselines\mdagents\upstream
 ```
 
 命令行帮助检查：
 
 ```powershell
-.\.venv\Scripts\python.exe external\MDAgents\main.py --help
+.\.venv\Scripts\python.exe baselines\mdagents\upstream\main.py --help
 ```
 
 结果：
@@ -202,7 +202,7 @@ DeepSeek OpenAI 兼容客户端初始化检查，使用占位符值且不发起 
 $env:DEEPSEEK_API_KEY='dummy-for-offline-init-only'
 $env:DEEPSEEK_BASE_URL='https://api.deepseek.com'
 $env:DEEPSEEK_MODEL='deepseek-flash'
-.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, r'external\MDAgents'); import utils; model, client = utils.setup_model('deepseek-flash'); print('OK deepseek client initialized without API request')"
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, r'baselines\mdagents\upstream'); import utils; model, client = utils.setup_model('deepseek-flash'); print('OK deepseek client initialized without API request')"
 ```
 
 结果：
@@ -214,7 +214,7 @@ OK deepseek client initialized without API request
 字节码编译检查：
 
 ```powershell
-.\.venv\Scripts\python.exe -m compileall -q scripts external\MDAgents
+.\.venv\Scripts\python.exe -m compileall -q scripts baselines\mdagents\upstream
 ```
 
 结果：退出码为 0，无错误输出。
@@ -290,8 +290,8 @@ conda 环境验证：
 ```powershell
 & C:\Users\Administrator\miniconda3\envs\mdagents\python.exe --version
 & C:\Users\Administrator\miniconda3\envs\mdagents\python.exe -m pip check
-& C:\Users\Administrator\miniconda3\envs\mdagents\python.exe scripts\health_check.py --check-env-name
-& C:\Users\Administrator\miniconda3\envs\mdagents\python.exe external\MDAgents\main.py --help
+& C:\Users\Administrator\miniconda3\envs\mdagents\python.exe baselines\mdagents\scripts\health_check.py --check-env-name
+& C:\Users\Administrator\miniconda3\envs\mdagents\python.exe baselines\mdagents\upstream\main.py --help
 ```
 
 结果：
@@ -317,7 +317,7 @@ DeepSeek OpenAI 兼容客户端初始化检查，使用占位符且不发起 API
 $env:DEEPSEEK_API_KEY='dummy-for-offline-init-only'
 $env:DEEPSEEK_BASE_URL='https://api.deepseek.com'
 $env:DEEPSEEK_MODEL='deepseek-flash'
-& C:\Users\Administrator\miniconda3\envs\mdagents\python.exe -c "import sys; sys.path.insert(0, r'external\MDAgents'); import utils; model, client = utils.setup_model('deepseek-flash'); print('OK deepseek client initialized without API request')"
+& C:\Users\Administrator\miniconda3\envs\mdagents\python.exe -c "import sys; sys.path.insert(0, r'baselines\mdagents\upstream'); import utils; model, client = utils.setup_model('deepseek-flash'); print('OK deepseek client initialized without API request')"
 ```
 
 结果：

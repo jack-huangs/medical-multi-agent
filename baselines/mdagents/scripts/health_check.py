@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-MDAGENTS_ROOT = ROOT / "external" / "MDAgents"
+ROOT = Path(__file__).resolve().parents[3]
+MDAGENTS_ROOT = ROOT / "baselines/mdagents/upstream"
 
 
 def check_import(module_name):

@@ -1,0 +1,6 @@
+# Separate virtual environment; do not install into the legacy MDAgents environment.
+langgraph==1.2.12
+langchain-core==1.6.4
+rank-bm25==0.2.2
+openai==2.54.0
+python-dotenv==1.2.1

@@ -1,0 +1,711 @@
+[
+  {
+    "from": "external/MDAgents",
+    "action": "move",
+    "to": "baselines/mdagents/upstream"
+  },
+  {
+    "from": "runs/consensus_pilot_20260923",
+    "action": "move",
+    "to": "baselines/mdagents/runs/consensus_pilot_20260923"
+  },
+  {
+    "from": "scripts/audit_pilot_routing.py",
+    "action": "move",
+    "to": "baselines/mdagents/scripts/audit_pilot_routing.py"
+  },
+  {
+    "from": "scripts/create_basic_xmind.py",
+    "action": "move",
+    "to": "baselines/mdagents/scripts/create_basic_xmind.py"
+  },
+  {
+    "from": "scripts/health_check.py",
+    "action": "move",
+    "to": "baselines/mdagents/scripts/health_check.py"
+  },
+  {
+    "from": "scripts/prepare_consensus_pilot.py",
+    "action": "move",
+    "to": "baselines/mdagents/scripts/prepare_consensus_pilot.py"
+  },
+  {
+    "from": "scripts/review_consensus_pilot.py",
+    "action": "move",
+    "to": "baselines/mdagents/scripts/review_consensus_pilot.py"
+  },
+  {
+    "from": "scripts/run_consensus_pilot.py",
+    "action": "move",
+    "to": "baselines/mdagents/scripts/run_consensus_pilot.py"
+  },
+  {
+    "from": "scripts/test_pilot_offline.py",
+    "action": "move",
+    "to": "baselines/mdagents/scripts/test_pilot_offline.py"
+  },
+  {
+    "from": "docs/advanced.drawio",
+    "action": "move",
+    "to": "baselines/mdagents/docs/advanced.drawio"
+  },
+  {
+    "from": "docs/basic.drawio",
+    "action": "move",
+    "to": "baselines/mdagents/docs/basic.drawio"
+  },
+  {
+    "from": "docs/intermediate.drawio",
+    "action": "move",
+    "to": "baselines/mdagents/docs/intermediate.drawio"
+  },
+  {
+    "from": "docs/main函数逻辑图.png",
+    "action": "move",
+    "to": "baselines/mdagents/docs/main函数逻辑图.png"
+  },
+  {
+    "from": "docs/reproduction-log.md",
+    "action": "move",
+    "to": "baselines/mdagents/docs/reproduction-log.md"
+  },
+  {
+    "from": "docs/consensus-pilot-design.md",
+    "action": "move",
+    "to": "baselines/mdagents/docs/consensus-pilot-design.md"
+  },
+  {
+    "from": "低难度题目处理流程.drawio",
+    "action": "move",
+    "to": "baselines/mdagents/docs/低难度题目处理流程.drawio"
+  },
+  {
+    "from": "requirements.txt",
+    "action": "move",
+    "to": "baselines/mdagents/requirements.txt"
+  },
+  {
+    "from": "environment.yml",
+    "action": "move",
+    "to": "baselines/mdagents/environment.yml"
+  },
+  {
+    "from": "README.md",
+    "action": "move",
+    "to": "baselines/mdagents/README.md"
+  },
+  {
+    "from": "runs/evidence_dependency/baseline1-review-console.json",
+    "action": "move",
+    "to": "baselines/mdagents/runs/baseline1-review-console.json"
+  },
+  {
+    "from": "runs/evidence_dependency/baseline2-review-console.json",
+    "action": "move",
+    "to": "baselines/mdagents/runs/baseline2-review-console.json"
+  },
+  {
+    "from": "docs/KAMAC.md",
+    "action": "move",
+    "to": "references/notes/KAMAC.md"
+  },
+  {
+    "from": "docs/rare_disease_traceble_reasoning.md",
+    "action": "move",
+    "to": "references/notes/rare_disease_traceble_reasoning.md"
+  },
+  {
+    "from": "多智能体医疗论文分享PPT内容规划.md",
+    "action": "move",
+    "to": "references/presentations/多智能体医疗论文分享PPT内容规划.md"
+  },
+  {
+    "from": "docs/medical_multi_agent_group_meeting_zh_cn_final.pptx",
+    "action": "move",
+    "to": "references/presentations/medical_multi_agent_group_meeting_zh_cn_final.pptx"
+  },
+  {
+    "from": "output/pptx",
+    "action": "move",
+    "to": "references/presentations/versions"
+  },
+  {
+    "from": "build/pptx/build_deck.mjs",
+    "action": "move",
+    "to": "references/presentations/build_deck.mjs"
+  },
+  {
+    "bytes": 105035,
+    "sha256": "E441325159C667E692BC2B1F4CFD8D2C5326B350FBC78B685163614110FA5D7B",
+    "action": "delete",
+    "reason": "用户要求清理论文原文文本；不属于实验 RAG 语料",
+    "path": "doctor_agent_paper.txt"
+  },
+  {
+    "bytes": 86159,
+    "sha256": "C213DDCA393253EFCF163C1F0C32FA19124FD34D823A4894BDBF7A6074A73307",
+    "action": "delete",
+    "reason": "用户要求清理论文原文文本；不属于实验 RAG 语料",
+    "path": "mam_paper.txt"
+  },
+  {
+    "bytes": 196538,
+    "sha256": "554FAAA6D867DD61FBA507A7781B6FB8C85AB69A9FC511581915462FB29A8DB2",
+    "action": "delete",
+    "reason": "用户要求清理论文原文文本；不属于实验 RAG 语料",
+    "path": "mdagents_paper.txt"
+  },
+  {
+    "bytes": 54925,
+    "sha256": "E3570FFC292199023D7B26E13DC728C6AF1ED59542A9123662A84FFA55EDABA1",
+    "action": "delete",
+    "reason": "用户要求清理论文原文文本；不属于实验 RAG 语料",
+    "path": "medla_paper.txt"
+  },
+  {
+    "bytes": 74506,
+    "sha256": "2F9241905B968ADB127061B8A3704B8A581D849C5C8DDE5AC3DD1AD18D8B118C",
+    "action": "delete",
+    "reason": "用户要求清理论文原文文本；不属于实验 RAG 语料",
+    "path": "optimization_paradox.txt"
+  },
+  {
+    "bytes": 85913,
+    "sha256": "2C1FE8479E7D32A615B9EE007329AF22FA014A1027FB2BF006306423D71E7104",
+    "action": "delete",
+    "reason": "用户要求清理论文原文文本；不属于实验 RAG 语料",
+    "path": "paper.txt"
+  },
+  {
+    "bytes": 271544,
+    "sha256": "1AA794D00DDB099EA0A08822D2797580CC81FE7FA183FC91D6C0946CC2EB74AF",
+    "action": "delete",
+    "reason": "用户要求清理论文原文文本；不属于实验 RAG 语料",
+    "path": "rare_disease_paper.txt"
+  },
+  {
+    "bytes": 409,
+    "sha256": "5DEA3D3D0E568A547CCEA8C57EDD4CE9DAB089D47238C73AFF7D516432619CD5",
+    "action": "delete",
+    "reason": "未被调用、语法不完整的 SDK 草稿",
+    "path": "apiSDK.py"
+  },
+  {
+    "bytes": 48864,
+    "sha256": "CFB1474FE69973305104FE0B6E93E51F30E7C3AB62F64700B38F46AE8AA598A7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\final_deck_v2.pptx"
+  },
+  {
+    "bytes": 48881,
+    "sha256": "02403B5C3E4B59C0E50696F9CF9CE39712B0FA7472297CF4C39806B4A5DC817A",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\final_deck.pptx"
+  },
+  {
+    "bytes": 53882,
+    "sha256": "73F91802E89F2484338332765C5114F1CFD2EDA590F6E66E0DCF3D707B5FD931",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\lines_fixed_v2.pptx"
+  },
+  {
+    "bytes": 53837,
+    "sha256": "41ED3F897A985625E30786F255C468C26528FB935B45EC1F78E465DDE5722E40",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\lines_fixed.pptx"
+  },
+  {
+    "bytes": 264032,
+    "sha256": "BE3213AD7B7969E66862D18102BEC39D4FFCF085D633DC6351A91297F1F1AFF5",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\montage_lines_fixed_v2.png"
+  },
+  {
+    "bytes": 262612,
+    "sha256": "60E5F0243E886CBBF68664116858559431DFB5ADF6F2A33C76239A862391F87C",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\montage_lines_fixed.png"
+  },
+  {
+    "bytes": 261211,
+    "sha256": "CE2184FA6F3FF2C2B4BB002D1F8930D61BD9AEC5AFC9A7AAD618262B3A00D1C1",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\montage_v2.png"
+  },
+  {
+    "bytes": 262991,
+    "sha256": "AC6D7A97AFCD7EF6040AF9DC0FBAEFECC4D56DC833DB906929408E507A1C9668",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\montage.png"
+  },
+  {
+    "bytes": 50755,
+    "sha256": "FBB98C8D8DBE3283FC9E7B377AEF24CE87B3E9F7259E434A19456676BDED9FF7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-1.png"
+  },
+  {
+    "bytes": 86084,
+    "sha256": "0ABBFC65FC3262B832C3482967F936FBD043C4BE1AA078AA895630F8DDFB7086",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-2.png"
+  },
+  {
+    "bytes": 64378,
+    "sha256": "6C3585D37CB783C9926020DE3C0A70F7F2039313BBD45E6F1FAB65CE6FCADD85",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-3.png"
+  },
+  {
+    "bytes": 83002,
+    "sha256": "6BBFDB4825BE4562A4D6200187E7E4F3C522ED482814D03D44C7BFDBC979B9F7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-4.png"
+  },
+  {
+    "bytes": 85780,
+    "sha256": "4DBF7BA7157195C3B252226BDC87016C1F014410530A24009BEB9A1A387F3C31",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-5.png"
+  },
+  {
+    "bytes": 88570,
+    "sha256": "E283B4A49FC675AE253FDEFEFC92047437A362A68E71C34A784DA35294359CC3",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-6.png"
+  },
+  {
+    "bytes": 77969,
+    "sha256": "DC4EB343585FD1878430A5686952BCAA4DD2BE005F757E29A35036B316E4E3B6",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-7.png"
+  },
+  {
+    "bytes": 90446,
+    "sha256": "08EA9A18A52FDAFF84D1B37027A40F77D1BB601A540AC91B90DED3728685B60F",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-8.png"
+  },
+  {
+    "bytes": 101822,
+    "sha256": "5F83B1D417DC413EB29C28027772DF78CFBF61205B4FDE529B0A98E2D9215590",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered\\slide-9.png"
+  },
+  {
+    "bytes": 50755,
+    "sha256": "FBB98C8D8DBE3283FC9E7B377AEF24CE87B3E9F7259E434A19456676BDED9FF7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-1.png"
+  },
+  {
+    "bytes": 86095,
+    "sha256": "21009ED88F5F945BEEF7EDF956F8E22DC4246D0A43A4EBEB48EB2DF3AAF9539A",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-2.png"
+  },
+  {
+    "bytes": 64476,
+    "sha256": "BEA642A4CF5DBE0C915A2B8BE66119C5EF7F4E1BBCE83165622ECF7E14341B5A",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-3.png"
+  },
+  {
+    "bytes": 82996,
+    "sha256": "6D29DCA5AA1322E739D0813F5B06EA455EE9E61F1DA136246E169E279DB4BC7C",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-4.png"
+  },
+  {
+    "bytes": 85849,
+    "sha256": "486001C6C2EEFB5AE088C4E61B8E304716E882CC2420D486D82236B5D4CF966F",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-5.png"
+  },
+  {
+    "bytes": 88428,
+    "sha256": "0A40DD402F93C387745F40BF05A14F69E716B24A965C5D654E7989D545A61791",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-6.png"
+  },
+  {
+    "bytes": 77969,
+    "sha256": "DC4EB343585FD1878430A5686952BCAA4DD2BE005F757E29A35036B316E4E3B6",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-7.png"
+  },
+  {
+    "bytes": 90195,
+    "sha256": "03D3EE65005A3D2A15FF2288DB56BF7D05F936EA6D1DB6D0B9C05636954EF3CC",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-8.png"
+  },
+  {
+    "bytes": 100106,
+    "sha256": "B23C1B3A4FD7A5A2BD31F5143E66F701701143B993EA5B6C2139C1C2B47078BF",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_final\\slide-9.png"
+  },
+  {
+    "bytes": 50755,
+    "sha256": "FBB98C8D8DBE3283FC9E7B377AEF24CE87B3E9F7259E434A19456676BDED9FF7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-1.png"
+  },
+  {
+    "bytes": 85950,
+    "sha256": "8558DF38A30EED8C471CDB3A37131FF446BBA0F828A7856EBEFAA737334A7C78",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-2.png"
+  },
+  {
+    "bytes": 64650,
+    "sha256": "CD335903517799DD34EA5BCE8835C394C63B035E42FB6AF07F13446271AC53E7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-3.png"
+  },
+  {
+    "bytes": 83146,
+    "sha256": "1D695C6A3D310CD25AB4FC73D221300939FCA74D3DDBCF3031FD5DED7D96492A",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-4.png"
+  },
+  {
+    "bytes": 86215,
+    "sha256": "E9D361CB9217AA9172C699BB7D3B058A436B44EF48AE8FDBA3C352DFD7BB9D60",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-5.png"
+  },
+  {
+    "bytes": 88746,
+    "sha256": "13A2261DF2F84E80F7DFD4598DE1210BC2D24870A45370E11514A5AFF4D86D40",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-6.png"
+  },
+  {
+    "bytes": 77969,
+    "sha256": "DC4EB343585FD1878430A5686952BCAA4DD2BE005F757E29A35036B316E4E3B6",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-7.png"
+  },
+  {
+    "bytes": 90518,
+    "sha256": "8EDBEB39FA8C00917F584B3FD0198720557A1DE93F0DFBB9E4A0031F34E8740D",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-8.png"
+  },
+  {
+    "bytes": 100254,
+    "sha256": "5A138D7B774CF6E670C055D67D196A4EE4C93772C37A1BA8121422CD03DA31FC",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed\\slide-9.png"
+  },
+  {
+    "bytes": 50755,
+    "sha256": "FBB98C8D8DBE3283FC9E7B377AEF24CE87B3E9F7259E434A19456676BDED9FF7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-1.png"
+  },
+  {
+    "bytes": 85950,
+    "sha256": "8558DF38A30EED8C471CDB3A37131FF446BBA0F828A7856EBEFAA737334A7C78",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-2.png"
+  },
+  {
+    "bytes": 64650,
+    "sha256": "CD335903517799DD34EA5BCE8835C394C63B035E42FB6AF07F13446271AC53E7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-3.png"
+  },
+  {
+    "bytes": 83146,
+    "sha256": "1D695C6A3D310CD25AB4FC73D221300939FCA74D3DDBCF3031FD5DED7D96492A",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-4.png"
+  },
+  {
+    "bytes": 86215,
+    "sha256": "E9D361CB9217AA9172C699BB7D3B058A436B44EF48AE8FDBA3C352DFD7BB9D60",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-5.png"
+  },
+  {
+    "bytes": 88746,
+    "sha256": "13A2261DF2F84E80F7DFD4598DE1210BC2D24870A45370E11514A5AFF4D86D40",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-6.png"
+  },
+  {
+    "bytes": 77969,
+    "sha256": "DC4EB343585FD1878430A5686952BCAA4DD2BE005F757E29A35036B316E4E3B6",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-7.png"
+  },
+  {
+    "bytes": 93987,
+    "sha256": "6CDC4AFF8C9D8E35D096BF0834DEF44A44BF0AF14B1A688E8E9C79C337D73AC3",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-8.png"
+  },
+  {
+    "bytes": 100254,
+    "sha256": "5A138D7B774CF6E670C055D67D196A4EE4C93772C37A1BA8121422CD03DA31FC",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_lines_fixed_v2\\slide-9.png"
+  },
+  {
+    "bytes": 50755,
+    "sha256": "FBB98C8D8DBE3283FC9E7B377AEF24CE87B3E9F7259E434A19456676BDED9FF7",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-1.png"
+  },
+  {
+    "bytes": 86095,
+    "sha256": "21009ED88F5F945BEEF7EDF956F8E22DC4246D0A43A4EBEB48EB2DF3AAF9539A",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-2.png"
+  },
+  {
+    "bytes": 64476,
+    "sha256": "BEA642A4CF5DBE0C915A2B8BE66119C5EF7F4E1BBCE83165622ECF7E14341B5A",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-3.png"
+  },
+  {
+    "bytes": 82996,
+    "sha256": "6D29DCA5AA1322E739D0813F5B06EA455EE9E61F1DA136246E169E279DB4BC7C",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-4.png"
+  },
+  {
+    "bytes": 85849,
+    "sha256": "486001C6C2EEFB5AE088C4E61B8E304716E882CC2420D486D82236B5D4CF966F",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-5.png"
+  },
+  {
+    "bytes": 88428,
+    "sha256": "0A40DD402F93C387745F40BF05A14F69E716B24A965C5D654E7989D545A61791",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-6.png"
+  },
+  {
+    "bytes": 77969,
+    "sha256": "DC4EB343585FD1878430A5686952BCAA4DD2BE005F757E29A35036B316E4E3B6",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-7.png"
+  },
+  {
+    "bytes": 90000,
+    "sha256": "EB5A1109433E4A8EA8A8522D8FCD129805F4300C5374DBDFE351687A446F8725",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-8.png"
+  },
+  {
+    "bytes": 100106,
+    "sha256": "B23C1B3A4FD7A5A2BD31F5143E66F701701143B993EA5B6C2139C1C2B47078BF",
+    "action": "delete",
+    "reason": "PPT 构建和渲染中间产物；构建源码与输出版本已保留",
+    "path": "build\\pptx\\rendered_v2\\slide-9.png"
+  },
+  {
+    "bytes": 52207,
+    "sha256": "A1DD9BF2F20FEAA05D9029FE7853CBB6248219D5AEAC1E2442B526FC90D5F6C6",
+    "action": "delete",
+    "reason": "PPT 临时校验与候选产物",
+    "path": ".codex-finalizer\\multiagent_medical_candidate.pptx"
+  },
+  {
+    "bytes": 32803,
+    "sha256": "5BD1E422EC39DB157E68BCAA575FAD42D38DDEA8F12B8584CDF275C39217D3F4",
+    "action": "delete",
+    "reason": "PPT 临时校验与候选产物",
+    "path": ".codex-finalizer\\multiagent_medical_candidate.pptx.inspect.ndjson"
+  },
+  {
+    "bytes": 6863,
+    "sha256": "58D1497CFFA4275DAC4E6D56C2A0881C72F8FF373755D9C042ABE04962B2A16F",
+    "action": "delete",
+    "reason": "PPT 临时校验与候选产物",
+    "path": ".codex-finalizer\\multiagent_medical_final_v2.validation.json"
+  },
+  {
+    "bytes": 6863,
+    "sha256": "36B1C1803FA1F591A4BF16F404132215D656CB2F32197E716E8D626614B7D6FD",
+    "action": "delete",
+    "reason": "PPT 临时校验与候选产物",
+    "path": ".codex-finalizer\\multiagent_medical_final.validation.json"
+  },
+  {
+    "bytes": 6676,
+    "sha256": "1431706962D21A8936AFA8DDABF8648E5FCB11977E26760DB5CE0FA1D5DD914C",
+    "action": "delete",
+    "reason": "PPT 临时校验与候选产物",
+    "path": ".codex-finalizer\\multiagent_medical_lines_fixed_v2.validation.json"
+  },
+  {
+    "bytes": 6676,
+    "sha256": "3232A3711F069EB1598179D567B18BEE6FD73A80F0203D8C0BB1159FFBAA83A3",
+    "action": "delete",
+    "reason": "PPT 临时校验与候选产物",
+    "path": ".codex-finalizer\\multiagent_medical_lines_fixed.validation.json"
+  },
+  {
+    "bytes": 6863,
+    "sha256": "73A627FDAC6056E1EB23817ABF335FF64BC93135CF883C4193F0F6912F33E9AE",
+    "action": "delete",
+    "reason": "PPT 临时校验与候选产物",
+    "path": ".codex-finalizer\\multiagent_medical.validation.json"
+  },
+  {
+    "bytes": 53882,
+    "sha256": "73F91802E89F2484338332765C5114F1CFD2EDA590F6E66E0DCF3D707B5FD931",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-4bxiCZ\\candidate.pptx"
+  },
+  {
+    "bytes": 1068,
+    "sha256": "EDB73327F22B945B5BD28112DEDCF3AA7D2396CBB45810B1075832C20EA6EBA6",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-4bxiCZ\\chart-data-snapshot.json"
+  },
+  {
+    "bytes": 48840,
+    "sha256": "C6274DA0312473E9A8B16EF0D0BD5426BB5F66AD0A5ED6ED6AF67F4DBE64ACFB",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-BCu59Z\\candidate.pptx"
+  },
+  {
+    "bytes": 1068,
+    "sha256": "A8FB01F977094F00E5D87A2DEA6BEDB9EDC9C966324D1DC30750CDFF834CF7A5",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-BCu59Z\\chart-data-snapshot.json"
+  },
+  {
+    "bytes": 49042,
+    "sha256": "DE8584B509D6F8D1F689FA230983E7866BCD452C6CD7A789CE0FA17AEBB97951",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-bQEIbM\\candidate.pptx"
+  },
+  {
+    "bytes": 1068,
+    "sha256": "8020184DF8767E00A36D4CD713A375AE83EDEE8EA1E587CC4FA66FC07A2A7A35",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-bQEIbM\\chart-data-snapshot.json"
+  },
+  {
+    "bytes": 49048,
+    "sha256": "B5055B34D18B2F3FECD5D90D4B74A89D0D6EB20338864E02637FF8D6CD3B572C",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-GsRI2K\\candidate.pptx"
+  },
+  {
+    "bytes": 1068,
+    "sha256": "0B6ACF5EE4EFCF9163F814687F32F18C95F2B1DD720C998765FE888E30CE3D87",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-GsRI2K\\chart-data-snapshot.json"
+  },
+  {
+    "bytes": 48864,
+    "sha256": "CFB1474FE69973305104FE0B6E93E51F30E7C3AB62F64700B38F46AE8AA598A7",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-iScDuY\\candidate.pptx"
+  },
+  {
+    "bytes": 1068,
+    "sha256": "2A939ED9444E5C053B7EFE11CB2319691154291756071A5D98AE0D0693E528FA",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-iScDuY\\chart-data-snapshot.json"
+  },
+  {
+    "bytes": 48881,
+    "sha256": "02403B5C3E4B59C0E50696F9CF9CE39712B0FA7472297CF4C39806B4A5DC817A",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-tUL76B\\candidate.pptx"
+  },
+  {
+    "bytes": 1068,
+    "sha256": "0B8EB872583C640B15082EA297A3C761660F6CAF586C231DC14AEC903C07926F",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-tUL76B\\chart-data-snapshot.json"
+  },
+  {
+    "bytes": 53837,
+    "sha256": "41ED3F897A985625E30786F255C468C26528FB935B45EC1F78E465DDE5722E40",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-ZjSeI5\\candidate.pptx"
+  },
+  {
+    "bytes": 1068,
+    "sha256": "59D206EBEDDD848CF5C0C377CFBD7ABDFB013CD6A54AE46990A2E6F30204D0FB",
+    "action": "delete",
+    "reason": "PPT 编辑临时快照",
+    "path": ".chart-data-ZjSeI5\\chart-data-snapshot.json"
+  }
+]

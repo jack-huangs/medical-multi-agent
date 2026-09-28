@@ -12,10 +12,15 @@ __pycache__/
 # Experiment data and generated outputs
 data/
 output/
-external/MDAgents/output/
+baselines/mdagents/upstream/output/
 runs/
 results/
 logs/
 
 # Downloaded source archive; unpacked source is kept under external/MDAgents.
 external/*.zip
+baselines/mdagents/runs/
+references/presentations/build/
+.chart-data-*/
+.codex-finalizer/
+build/

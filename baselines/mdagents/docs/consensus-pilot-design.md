@@ -1,11 +1,13 @@
 # 医疗多智能体证据依赖预实验：高正确率情况下的设计
 
-日期：2026-09-23。状态：设计与开发样本已准备，尚未执行新的模型实验。
+日期：2026-09-23。固定开发样本已准备；用户授权后已启动首批 100 题，实际进度与结果以运行目录中的 `summary.json` 为准。
 
 ## 当前证据
 
+更新（2026-09-23）：后续机制原型见 `docs/evidence-dependency-protocol.md`。两批 100 题均由 adaptive 实际判为 basic。第二批续跑出现日志完整性问题；路由一致不等于运行记录完整，旧准确率仅描述保存答案，不能据此使用该批成本数据。重新审计应分别查看 `route_consistency_verified` 与 `single_attempt_checks_passed`。新 runner 已加入控制器/病例锁和独立尝试目录，旧原始记录不重写。
+
 - 本地 `data/medqa/train.jsonl` 有 10,178 条，`test.jsonl` 有 1,273 条。
-- 当前找到的 `external/MDAgents/output/advanced_result.json` 只有 1 个样本，输出 B 与标签 B 一致。这不代表历史只运行过一题，也不能估计总体正确率。
+- 当前找到的 `baselines/mdagents/upstream/output/advanced_result.json` 只有 1 个样本，输出 B 与标签 B 一致。这不代表历史只运行过一题，也不能估计总体正确率。
 - 当前主程序按模式写入固定结果文件名，会覆盖旧结果；抽题未固定种子，不适合直接开展方法间配对比较。
 - 正式基线比较前，需要修正中级流程意见写回与提前退出时空汇总的问题。修复属于基线维护，不计作算法创新。
 
@@ -19,7 +21,7 @@
 
 ## 已准备的开发样本
 
-运行 `scripts/prepare_consensus_pilot.py` 可以从本地训练集生成固定样本，种子为 20260923。脚本不导入模型 SDK、不读取密钥、不调用 API。
+运行 `baselines/mdagents/scripts/prepare_consensus_pilot.py` 可以从本地训练集生成固定样本，种子为 20260923。脚本不导入模型 SDK、不读取密钥、不调用 API。
 
 - `pilot_100`：首批 100 题，用于开发摸底。
 - `reserve_200`：额外 200 题，用于有需要时按预先声明的规则扩展开发实验。
@@ -27,9 +29,39 @@
 - 官方测试集不用于这次方案调参；生成时只读取它检查精确重叠。
 - 输入和答案分别保存。只有评分器可以读取 pilot/reserve 的 labels 文件。示例题的答案可以作为 few-shot 上下文。
 - 保存原始数据 SHA-256、样本 ID 和原始行号；排除规范化题干与选项完全重复的条目。语义近重复及预训练污染仍未排除。
-- 输出位于 `runs/consensus_pilot_20260923/`，已被仓库现有忽略规则覆盖。
+- 输出位于 `baselines/mdagents/runs/consensus_pilot_20260923/`，已被仓库现有忽略规则覆盖。
 
-当前主程序尚未接入该清单；不得直接执行现有随机抽样命令并称其为固定清单实验。
+固定清单由独立入口 `baselines/mdagents/scripts/run_consensus_pilot.py` 读取；原 `main.py` 的随机抽样入口继续保留。不得混淆两个入口的结果。
+
+## 首次执行
+
+使用 Miniconda 的 `mdagents` 环境执行：
+
+```powershell
+python -X utf8 -u baselines/mdagents/scripts/run_consensus_pilot.py --workers 4 --run-dir baselines/mdagents/runs/consensus_pilot_20260923/adaptive_baseline_100
+```
+
+该次使用现有 DeepSeek API 配置和 adaptive 路由。每题独立进程状态和随机种子，提供 5 道分离的示例；每次生成示例解释沿用当前方法流程。模型内部随机性不由 Python 种子保证。
+
+运行前已修正：无人发言时的初诊意见保底、后续轮次意见写回、定向消息传递与最终更新、无效专家编号过滤。难度路由要求只输出一个标签，并拒绝将包含多个候选标签的回复误判为 basic。这是修正后的方法实现，不是未经改动的官方指标复现。
+
+离线回归覆盖立即结束保留初诊、跨轮更新与消息到达，以及最终答案解析和 Wilson 区间。测试入口：`baselines/mdagents/scripts/test_pilot_offline.py`。
+
+每题上限 160 次模型调用和 1800 秒（在发起下一调用前检查）；单次 HTTP 请求超时 120 秒，SDK 最多重试 2 次。若上限触发，记录执行失败并保留在准确率分母中。模型调用数不含 SDK 内部逐次传输重试；token 为成功响应报告的用量，不应冒充账单金额。
+
+运行目录保存源码快照、配置哈希、逐题输入/响应/用量日志、自动评分、错误样本与 Markdown 报告。恢复运行仅允许相同配置与源码，不重复请求已有结果。正式结论前人工检查答案解析失败和候选错题。
+
+## 用户追加的第二批 100 题
+
+用户明确要求再测 100 道不重复题目，并由模型自适应选择协作结构。使用已经冻结的 `reserve_200` 前 100 题，未根据第一批答题表现筛选；示例题保持相同，仍与评测题互斥。
+
+```powershell
+python -X utf8 -u baselines/mdagents/scripts/run_consensus_pilot.py --difficulty adaptive --sample-group reserve_200 --offset 0 --limit 100 --workers 4 --run-dir baselines/mdagents/runs/consensus_pilot_20260923/adaptive_batch2_100
+```
+
+`--difficulty adaptive` 表示逐题调用模型选择 basic/intermediate/advanced，并不指定单专家或多专家分支。第二批没有改变路由提示词或人为设置各难度配额。首批日志审计确认 100 个难度判断的原始模型回复均为 basic；实际分支与这些回复一致。
+
+运行完成后使用 `baselines/mdagents/scripts/audit_pilot_routing.py <run-dir>` 核查配置、原始难度判断响应、执行分支和创建的 Agent 角色。使用 `baselines/mdagents/scripts/review_consensus_pilot.py <run-dir>` 离线补识别明确的首行选项，保留原评分与修正记录，不追加模型调用。
 
 ## 分开的三个评测问题
 

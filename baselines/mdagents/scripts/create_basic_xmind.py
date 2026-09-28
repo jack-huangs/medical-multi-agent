@@ -7,7 +7,7 @@ from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 
-OUTPUT = Path(__file__).resolve().parents[1] / "低难度题目处理流程.xmind"
+OUTPUT = Path(__file__).resolve().parents[3] / "baselines/mdagents/docs/低难度题目处理流程.xmind"
 CONTENT_NS = "urn:xmind:xmap:xmlns:content:2.0"
 MANIFEST_NS = "urn:xmind:xmap:xmlns:manifest:1.0"
 XML_NS = "http://www.w3.org/XML/1998/namespace"

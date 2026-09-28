@@ -1,0 +1,53 @@
+$ErrorActionPreference = 'Stop'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$changes = [System.Collections.Generic.List[object]]::new()
+function CheckedPath([string]$relative) {
+    $full = [IO.Path]::GetFullPath((Join-Path $root $relative))
+    if (-not $full.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "Outside workspace: $relative" }
+    return $full
+}
+function MoveLocal([string]$from, [string]$to) {
+    $src = CheckedPath $from; $dst = CheckedPath $to
+    if (-not (Test-Path -LiteralPath $src)) { return }
+    if (Test-Path -LiteralPath $dst) { throw "Destination exists: $to" }
+    New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
+    Move-Item -LiteralPath $src -Destination $dst
+    $changes.Add(@{action='move';from=$from;to=$to})
+}
+function DeleteLocal([string]$relative, [string]$reason) {
+    $target = CheckedPath $relative
+    if (-not (Test-Path -LiteralPath $target)) { return }
+    $files = @(Get-ChildItem -LiteralPath $target -Recurse -File -Force)
+    if (Test-Path -LiteralPath $target -PathType Leaf) { $files = @(Get-Item -LiteralPath $target) }
+    foreach ($file in $files) {
+        $changes.Add(@{action='delete';path=$file.FullName.Substring($root.Length+1);bytes=$file.Length;sha256=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash;reason=$reason})
+    }
+    Remove-Item -LiteralPath $target -Recurse -Force
+}
+MoveLocal 'external/MDAgents' 'baselines/mdagents/upstream'
+MoveLocal 'runs/consensus_pilot_20260923' 'baselines/mdagents/runs/consensus_pilot_20260923'
+foreach ($name in @('audit_pilot_routing.py','create_basic_xmind.py','health_check.py','prepare_consensus_pilot.py','review_consensus_pilot.py','run_consensus_pilot.py','test_pilot_offline.py')) {
+    MoveLocal "scripts/$name" "baselines/mdagents/scripts/$name"
+}
+foreach ($name in @('advanced.drawio','basic.drawio','intermediate.drawio','main函数逻辑图.png','reproduction-log.md','consensus-pilot-design.md')) { MoveLocal "docs/$name" "baselines/mdagents/docs/$name" }
+MoveLocal '低难度题目处理流程.drawio' 'baselines/mdagents/docs/低难度题目处理流程.drawio'
+MoveLocal 'requirements.txt' 'baselines/mdagents/requirements.txt'
+MoveLocal 'environment.yml' 'baselines/mdagents/environment.yml'
+MoveLocal 'README.md' 'baselines/mdagents/README.md'
+foreach ($name in @('baseline1-review-console.json','baseline2-review-console.json')) { MoveLocal "runs/evidence_dependency/$name" "baselines/mdagents/runs/$name" }
+foreach ($name in @('KAMAC.md','rare_disease_traceble_reasoning.md')) { MoveLocal "docs/$name" "references/notes/$name" }
+MoveLocal '多智能体医疗论文分享PPT内容规划.md' 'references/presentations/多智能体医疗论文分享PPT内容规划.md'
+MoveLocal 'docs/medical_multi_agent_group_meeting_zh_cn_final.pptx' 'references/presentations/medical_multi_agent_group_meeting_zh_cn_final.pptx'
+MoveLocal 'output/pptx' 'references/presentations/versions'
+MoveLocal 'build/pptx/build_deck.mjs' 'references/presentations/build_deck.mjs'
+foreach ($name in @('doctor_agent_paper.txt','mam_paper.txt','mdagents_paper.txt','medla_paper.txt','optimization_paradox.txt','paper.txt','rare_disease_paper.txt')) { DeleteLocal $name '用户要求清理论文原文文本；不属于实验 RAG 语料' }
+DeleteLocal 'apiSDK.py' '未被调用、语法不完整的 SDK 草稿'
+DeleteLocal 'build' 'PPT 构建和渲染中间产物；构建源码与输出版本已保留'
+DeleteLocal '.codex-finalizer' 'PPT 临时校验与候选产物'
+foreach ($dir in Get-ChildItem -LiteralPath $root -Directory -Force -Filter '.chart-data-*') { DeleteLocal $dir.Name 'PPT 编辑临时快照' }
+foreach ($name in @('external','output')) {
+    $target = CheckedPath $name
+    if ((Test-Path -LiteralPath $target) -and @(Get-ChildItem -LiteralPath $target -Force).Count -eq 0) { Remove-Item -LiteralPath $target }
+}
+$changes | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (CheckedPath 'docs/cleanup-manifest.json') -Encoding utf8
+Write-Output "Recorded $($changes.Count) move/delete entries."

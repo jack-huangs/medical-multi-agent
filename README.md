@@ -1,110 +1,39 @@
-# MDAgents 医疗 multi-agent 方法复现环境
+# 证据依赖感知的医疗多 Agent 协作
 
-本项目用于在隔离、可复现的本地 Python 环境中运行官方 MDAgents 实现，并将模型后端配置为 DeepSeek Flash 的 OpenAI 兼容 API。
+当前研究：追踪多个 Agent 对证据的引用和继承，研究重复证据是否放大错误共识。已有 LangGraph / LangChain RAG 实验原型；尚未证明方法有效性。
 
-上游来源：
+## 从这里开始
 
-- 官方仓库：https://github.com/mitmedialab/MDAgents
-- 本项目中的源码位置：`external/MDAgents`
-- 由于当前 Windows Git 缺少 HTTPS remote helper，源码通过 GitHub `main.zip` 下载并解包，而不是用 `git clone` 完成。
+- [文件树与逐文件用途](docs/PROJECT_STRUCTURE.md)：查看代码、资料、数据及实验记录的职责。
+- [研究协议](docs/evidence-dependency-protocol.md)：四组干预、引用约束、评价指标和实验边界。
+- [困难数据集与最新实验](docs/hard-benchmark-protocol.md)：MedXpertQA 开发集、难度探测、RAG 语料准备。
+- [困难题协作检查](docs/hard-collaboration-check.md)：2026-09-25 三题五种流程检查、引用审计及共识形成分析。
+- [早期原型进展](docs/evidence-dependency-progress.md)：单题调试和成本记录。
+- [MDAgents 复现](baselines/mdagents/README.md)：旧复现源码、环境、流程图和历史实验集中在此。
 
-详细安装与验证记录见 `docs/reproduction-log.md`。
+## 当前代码与环境
 
-## 重要边界
+`scripts/` 为当前研究代码，`examples/evidence_dependency/` 为虚构离线测试样例，`data/` 为共享原始数据集，`runs/evidence_dependency/` 保存新研究的开发集、语料、实验及隔离环境。
 
-原论文实验使用的是论文设定中的模型和数据流程。本项目若使用 `deepseek-flash`，只能称为“MDAgents 方法复现”或“使用 DeepSeek Flash 的方法迁移复现”，不能称为论文指标复现，也不能把运行输出伪装成论文原始结果。
-
-医疗问答输出只适合研究复现实验，不构成医学建议。
-
-## 环境
-
-本项目已迁移到 Miniconda 专用环境 `mdagents`，环境位置为：
-
-```text
-C:\Users\Administrator\miniconda3\envs\mdagents
-```
-
-Python 版本：
-
-```text
-Python 3.12.14
-```
-
-如果环境还不存在，可用以下命令重建：
+在项目根目录运行离线测试（不调用模型 API）：
 
 ```powershell
-conda env create -f environment.yml
+& ./runs/evidence_dependency/.venv/Scripts/python.exe -m unittest discover -s scripts -p 'test_*.py'
+& C:/Users/Administrator/miniconda3/envs/mdagents/python.exe -m unittest discover -s baselines/mdagents/scripts -p 'test_*.py'
 ```
 
-进入环境：
+新研究依赖见 `requirements-evidence.txt`，已安装环境完整版本见 `runs/evidence_dependency/environment-freeze.txt`。旧复现使用独立 conda 环境，不与新环境混装。
 
-```powershell
-conda activate mdagents
-```
+`.env` 保留在根目录，由两套代码共享读取；只在本地保存密钥，不提交。`.env.example` 是配置模板。
 
-安装或刷新依赖：
+## 整理记录（2026-09-24）
 
-```powershell
-python -m pip install -r requirements.txt
-```
+旧 `external/MDAgents/` → `baselines/mdagents/upstream/`；旧 `runs/consensus_pilot_20260923/` → `baselines/mdagents/runs/consensus_pilot_20260923/`。复现专用脚本、环境和说明一并迁入 `baselines/mdagents/`。
 
-离线健康检查：
+历史实验配置、提示词、日志、源码快照原样保留，其中的旧绝对路径反映当时运行位置，不应据此删除或重写记录。整理更改了活动脚本，旧冻结配置可能拒绝直接续跑；新实验应建立新输出目录。
 
-```powershell
-python scripts\health_check.py --check-env-name
-python external\MDAgents\main.py --help
-```
+共享 MedQA 数据仍保留在 `data/medqa/`；新研究从旧 reserve 集选取开发样本的来源关系仍保留。新研究的 `.venv` 未移动，以免破坏 Windows 环境内的路径。
 
-## DeepSeek Flash 配置
+删除了根目录 7 份论文原文文本、无效 SDK 草稿及 PPT 临时构建/渲染文件；保留阅读笔记、PPT 源码与输出版本。实验 RAG 文献 XML 和来源记录未删除。详细移动/删除清单（含删除文件 SHA256）见 `docs/cleanup-manifest.json`，清单不提供已删文件内容恢复。
 
-复制示例环境文件：
-
-```powershell
-Copy-Item .env.example .env
-```
-
-`.env.example` 只提供变量名和默认端点，不包含任何密钥：
-
-```text
-DEEPSEEK_API_KEY=
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-flash
-```
-
-程序只读取项目根目录的 `.env` 文件，不读取系统环境变量。请只在该文件中保存真实 `DEEPSEEK_API_KEY`；`.gitignore` 会忽略它。不要把 API key 写入 README、脚本、提交记录或聊天消息。如果旧密钥已经出现在聊天中，应立即在 DeepSeek 控制台撤销并轮换。
-
-## 数据与运行
-
-上游代码默认从 `../data/{dataset}/test.jsonl` 和 `../data/{dataset}/train.jsonl` 读取数据。因此从 `external/MDAgents` 目录运行时，数据应放在项目根目录的 `data/{dataset}/` 下：
-
-```text
-data/
-  medqa/
-    train.jsonl
-    test.jsonl
-```
-
-示例运行命令：
-
-```powershell
-Push-Location external\MDAgents
-python main.py --model deepseek-flash --dataset medqa --difficulty adaptive --num_samples 10
-Pop-Location
-```
-
-若需要在命令行显示每一次模型调用的进度，并保存完整的提示词、回复和耗时，追加 `--verbose`：
-
-```powershell
-python main.py --model deepseek-flash --dataset medqa --difficulty basic --num_samples 1 --verbose
-```
-
-`--num_samples 1` 会从测试集**随机、无放回**抽取一道题；每次运行通常会抽到不同题目。`--num_samples 10` 则随机抽取 10 道不重复的题。
-
-运行结果会写入 `external/MDAgents/output/`。每次运行会生成：
-
-- `{difficulty}_result.json`：结果文件，每次同难度运行都会更新它；
-- `{difficulty}_detailed_log_{day-time}.jsonl`：本轮逐次 Agent 调用的结构化详细日志。日志不包含 API key。
-
-例如，15 日 14:30:25 开始的基础题实验会生成 `basic_result.json`，并写入 `basic_detailed_log_15-143025.jsonl`。
-
-根目录 `.gitignore` 已忽略 `.env`、`.venv`、`data/`、`output/`、`runs/`、`results/` 和 `logs/` 等本地实验产物。
+验证：当前研究 20 项、旧复现 4 项离线测试通过；旧环境健康检查与主程序帮助入口通过。本次整理没有付费模型调用。

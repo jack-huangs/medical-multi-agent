@@ -93,7 +93,7 @@ for no, sample in enumerate(tqdm(selected_samples), start=1):
             'difficulty': difficulty
         })
 
-# 运行目录为 external/MDAgents 时，结果与逐次调用日志均写到 output/ 下。
+# 运行目录为 baselines/mdagents/upstream 时，结果与逐次调用日志均写到 output/ 下。
 with open(short_result_path, 'w', encoding='utf-8') as file:
     json.dump(results, file, indent=4)
 trace_event(
