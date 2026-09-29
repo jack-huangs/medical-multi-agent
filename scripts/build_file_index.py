@@ -1,3 +1,4 @@
+# 文件用途：重新生成本文件和逐文件用途清单；不调用 API，不读取密钥内容。
 """Build the Chinese file guide and local file inventory without reading secrets."""
 import json
 import os
@@ -60,6 +61,7 @@ PURPOSES = {
     '多智能体医疗论文分享PPT内容规划.md': '论文分享 PPT 的内容规划。',
 }
 
+# 根据相对路径和文件名解释用途；不读取密钥内容。
 def purpose(path):
     rel = path.relative_to(ROOT).as_posix()
     if '/attempts/' in rel or '/cases/' in rel:

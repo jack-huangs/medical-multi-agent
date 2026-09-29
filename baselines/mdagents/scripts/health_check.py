@@ -1,3 +1,4 @@
+# 文件用途：检查旧 MDAgents 环境和源码导入，不调用 API。
 import argparse
 import importlib
 import os
@@ -9,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[3]
 MDAGENTS_ROOT = ROOT / "baselines/mdagents/upstream"
 
 
+# 尝试导入依赖，尽早发现环境缺包或模块路径问题。
 def check_import(module_name):
     importlib.import_module(module_name)
     print(f"OK import {module_name}")

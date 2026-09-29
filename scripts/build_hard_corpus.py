@@ -1,3 +1,4 @@
+# 文件用途：按冻结检索主题建立困难题共享文献库和下载清单。
 """Build a small topic-union CC BY corpus, with gold-blind queries frozen in source.
 
 Development only: lexical/semantic relevance still needs review. All questions use
@@ -48,6 +49,7 @@ TOPICS = [
 ]
 
 
+# 下载公开文章或检索响应；设置超时，防止网络请求无限等待。
 def get(url):
     with urllib.request.urlopen(url, timeout=40) as response:
         return response.read()

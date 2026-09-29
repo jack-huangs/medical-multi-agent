@@ -1,3 +1,4 @@
+# 文件用途：离线重放引用及来源继承验证，区分截断、无效引用和缺失父观点；不修复答案。
 """Replay evidence validation offline; never repair outputs or score partial cases."""
 import argparse
 import json
@@ -9,6 +10,7 @@ from run_evidence_pilot import accounting, read_jsonl
 from run_safety import atomic_json
 
 
+# 根据阶段名称还原观点编号和允许引用的父观点，防止引用尚未产生的意见。
 def stage_context(stage, opinions):
     parts = stage.split('/')
     if len(parts) == 2 and parts[0] == 'initial':
@@ -24,6 +26,7 @@ def stage_context(stage, opinions):
     raise ValueError('Unrecognized stage')
 
 
+# 只重放已保存的响应，检查引用和继承关系；不会调用模型，也不会修补错误答案。
 def replay(events, sample, evidence):
     starts, opinions, calls, usage_by_phase = {}, {}, [], {}
     for event in events:

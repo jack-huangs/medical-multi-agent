@@ -1,3 +1,4 @@
+# 文件用途：MDAgents 模型调用、难度路由和多专家协作实现，包含本地修复。
 import json
 import random
 import re
@@ -21,6 +22,7 @@ TRACE_LOGGER = None
 AGENT_IDS = count(1)
 
 
+# 记录旧 MDAgents 的调用和阶段事件，供后续审计协作过程。
 class TraceLogger:
     """Write one structured, secret-free event per line for a single experiment."""
 
@@ -30,6 +32,7 @@ class TraceLogger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text('', encoding='utf-8')
 
+    # 追加事件日志，并尽快写入磁盘，方便崩溃后核对哪些请求已经发出。
     def emit(self, event, **fields):
         record = {
             'event': event,
@@ -48,6 +51,7 @@ class TraceLogger:
             print(summary)
 
 
+# 为本轮运行设置日志文件和是否在终端显示进度。
 def configure_trace_log(path, verbose=False):
     """Enable detailed run logging without ever recording API keys."""
     global TRACE_LOGGER
@@ -55,11 +59,13 @@ def configure_trace_log(path, verbose=False):
     TRACE_LOGGER.emit('trace_started', trace_file=str(Path(path).resolve()))
 
 
+# 把当前阶段的信息交给日志器，方便事后还原流程。
 def trace_event(event, **fields):
     if TRACE_LOGGER is not None:
         TRACE_LOGGER.emit(event, **fields)
 
 
+# 从项目配置中读取指定项，统一配置入口。
 def config_value(name, default=None):
     """Return a non-empty value from the project .env file only."""
     value = CONFIG.get(name)
@@ -73,6 +79,7 @@ def config_value(name, default=None):
 # 这些模型共用 OpenAI 的 Chat Completions 调用格式；DeepSeek 通过兼容接口接入。
 OPENAI_COMPAT_MODELS = ['gpt-3.5', 'gpt-4', 'gpt-4o', 'gpt-4o-mini', 'deepseek-flash']
 
+# 创建兼容接口客户端；模型提供商配置仍由项目环境文件决定。
 def openai_compatible_client(model_info):
     """按模型类型建立客户端；密钥只从项目 .env 读取。"""
     if model_info == 'deepseek-flash':
@@ -82,6 +89,7 @@ def openai_compatible_client(model_info):
         )
     return OpenAI(api_key=config_value('OPENAI_API_KEY'))
 
+# 将程序使用的模型名映射到实际请求的模型标识。
 def resolve_model_name(model_info):
     """把命令行使用的简称转换为服务端实际需要的模型名。"""
     if model_info == 'deepseek-flash':
@@ -92,6 +100,7 @@ def resolve_model_name(model_info):
         return model_info
     return model_info
 
+# 表示一个带角色提示和对话历史的专家，封装实际模型调用。
 class Agent:
     """一个带有角色设定和独立聊天历史的 LLM 专家。
 
@@ -196,6 +205,7 @@ class Agent:
         
 
 
+# 把多个专家组织成小组，协调组内或组间讨论。
 class Group:
     """一个 MDT（多学科团队）：组长分派调查，成员调查，组长汇总出答案。"""
     def __init__(self, goal, members, question, examplers=None, model_info='gpt-4o-mini'):
@@ -296,6 +306,7 @@ class Group:
         elif comm_type == 'external':
             return
 
+# 解析模型返回的专家层级信息，供后续组织团队使用。
 def parse_hierarchy(info, emojis):
     """把招募 Agent 输出的 `父专家 > 子专家` 文本转换为可打印的树。"""
     moderator = Node('moderator (\U0001F468\u200D\u2696\uFE0F)')
@@ -328,6 +339,7 @@ def parse_hierarchy(info, emojis):
 
     return agents
 
+# 从模型生成的团队说明中提取分组信息。
 def parse_group_info(group_info):
     """解析 LLM 返回的 Group/Member 文本为 {group_goal, members} 结构。"""
     lines = group_info.split('\n')
@@ -354,6 +366,7 @@ def parse_group_info(group_info):
     
     return parsed_info
 
+# 启动前准备模型配置及客户端，尽早发现缺失配置。
 def setup_model(model_name):
     """验证模型类别并创建对应客户端；不在这里发送实际推理请求。"""
     if 'gemini' in model_name:
@@ -365,6 +378,7 @@ def setup_model(model_name):
     else:
         raise ValueError(f"Unsupported model: {model_name}")
 
+# 读取题库和示例题；两者用途不同，不能把待测题答案拼入提示词。
 def load_data(dataset):
     """Read test and prompt-example data from the project-level data directory."""
     test_qa = []
@@ -383,6 +397,7 @@ def load_data(dataset):
 
     return test_qa, examplers
 
+# 把题目与选项整理为模型输入；不同数据集可能使用不同字段。
 def create_question(sample, dataset):
     """将一条数据集记录转成提示词文本；MedQA 需要把选项也拼进去。"""
     if dataset == 'medqa':
@@ -395,6 +410,7 @@ def create_question(sample, dataset):
         return question, None
     return sample['question'], None
 
+# adaptive 模式让模型决定难度；显式指定其他模式时直接使用该模式。
 def determine_difficulty(question, difficulty, model):
     if difficulty != 'adaptive':
         return difficulty
@@ -411,6 +427,7 @@ def determine_difficulty(question, difficulty, model):
         return labels.pop()
     raise ValueError('Difficulty routing did not return one unambiguous label.')
 
+# 基础路线：由单专家处理，再按代码设定汇总多次回答。
 def process_basic_query(question, examplers, model, args):
     """基础题：生成 5 个带理由的示例，然后由单个专家完成选择题。"""
     medical_agent = Agent(instruction='You are a helpful medical agent.', role='medical expert', model_info=model)
@@ -438,6 +455,7 @@ def process_basic_query(question, examplers, model, args):
     
     return final_decision
 
+# 中等路线：组织多位专家讨论，保留初始意见并传递每轮更新。
 def process_intermediate_query(question, examplers, model, args):
     """中等题：动态招募专家，组织定向讨论，最后由 moderator 汇总。"""
     cprint("[INFO] Step 1. Expert Recruitment", 'yellow', attrs=['blink'])
@@ -533,6 +551,7 @@ def process_intermediate_query(question, examplers, model, args):
     final_answer = dict(round_opinions[1])
     trace_event('expert_opinions', stage='initial', opinions=final_answer)
 
+    # 按收件人收集其他专家发来的评论，避免遗漏讨论信息。
     def incoming_comments(target, through_round):
         return "\n".join(
             f"{round_key}/{turn_key} {source} -> Agent {target}: {targets[f'Agent {target}']}"
@@ -645,6 +664,7 @@ def process_intermediate_query(question, examplers, model, args):
 
     return final_decision
 
+# 复杂路线：组织多个医疗团队协作，最后形成汇总决策。
 def process_advanced_query(question, model, args):
     """高级题：动态建立多个 MDT，小组内部协作后再由最终决策者回答。"""
     print("[STEP 1] Recruitment")

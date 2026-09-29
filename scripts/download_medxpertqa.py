@@ -1,3 +1,4 @@
+# 文件用途：下载固定官方 MedXpertQA 版本并记录校验信息。
 """Fetch only the official Text split, at an immutable Hugging Face revision."""
 import hashlib
 import json

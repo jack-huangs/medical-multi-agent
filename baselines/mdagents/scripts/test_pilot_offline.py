@@ -1,3 +1,4 @@
+# 文件用途：旧路由解析、评分和专家消息传递回归测试。
 """Offline regressions for scoring and the repaired multi-agent information flow."""
 import contextlib
 import io
@@ -13,6 +14,7 @@ from run_consensus_pilot import answer_text, parse_answer, wilson
 
 
 class PilotTests(unittest.TestCase):
+    # 自适应模式必须采用模型返回的难度标签，不能悄悄默认单专家。
     def test_adaptive_route_uses_model_label(self):
         for label in ['basic', 'intermediate', 'advanced']:
             with patch.object(utils, 'Agent') as agent:
@@ -24,6 +26,7 @@ class PilotTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 utils.determine_difficulty('fixture', 'adaptive', 'fake')
 
+    # 明确答案可以评分；模糊或互相矛盾的选择不能硬猜。
     def test_score_explicit_and_ambiguous_answers(self):
         options = {'A': 'one', 'B': 'two', 'C': 'three', 'D': 'four'}
         for text, expected in [
@@ -78,6 +81,7 @@ class PilotTests(unittest.TestCase):
         moderator = next(message for role, message in prompts if role == 'Moderator' and 'Given each agent' in message)
         return summaries, prompts, moderator
 
+    # 即使讨论立即停止，汇总时也必须保留专家的初始意见。
     def test_immediate_stop_keeps_initial_opinions(self):
         summaries, _, moderator = self.exercise_discussion(False)
         self.assertEqual(len(summaries), 1)
@@ -85,6 +89,7 @@ class PilotTests(unittest.TestCase):
         self.assertIn('doctor5', moderator)
         self.assertNotIn('None', moderator)
 
+    # 后续轮次和指定收件专家应收到最新讨论信息。
     def test_later_rounds_and_recipients_receive_updates(self):
         summaries, prompts, moderator = self.exercise_discussion(True)
         self.assertEqual(len(summaries), 2)

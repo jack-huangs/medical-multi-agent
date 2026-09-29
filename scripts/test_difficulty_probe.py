@@ -1,3 +1,4 @@
+# 文件用途：难度探测输入约束、选项、模型参数与截断处理测试。
 """Offline checks for ten-option scoring, label isolation and explicit reasoning settings."""
 import json
 import tempfile
@@ -22,16 +23,19 @@ class ProbeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate(bad, options)
 
+    # 选项从题干中分离后，交换选项顺序不应改变内容身份指纹。
     def test_embedded_choices_removed_and_fingerprint_order_invariant(self):
         self.assertEqual(stem('Question?\nAnswer Choices: (A) alpha (B) beta'), 'Question?')
         self.assertEqual(fingerprint('Question?', {'A':'Alpha', 'B':'Beta'}),
                          fingerprint('QUESTION?\nAnswer Choices: omitted', {'A':'Beta', 'B':'Alpha'}))
 
+    # 输入含标准答案时应在创建模型客户端之前报错，避免泄漏和无效开销。
     def test_labels_are_rejected_before_any_client_is_created(self):
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaises(ValueError):
                 worker({'id':'one', 'question':'x', 'options':{'A':'a'}, 'answer_idx':'A'}, 'test', Path(temp), {})
 
+    # 检查推理参数确实随请求发送，截断也要写入日志。
     def test_explicit_thinking_request_and_truncation_recorded(self):
         with tempfile.TemporaryDirectory() as temp:
             attempt = new_attempt(temp)

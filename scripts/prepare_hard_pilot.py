@@ -1,3 +1,4 @@
+# 文件用途：筛选困难开发题、去重和拆分模型输入/评估标签。
 """Freeze a diagnosis/reasoning development subset before any model evaluation."""
 import hashlib
 import json
@@ -13,18 +14,22 @@ OUT = ROOT / 'runs/evidence_dependency/hard_dev30'
 SEED = 20260924
 
 
+# 读取每行一个 JSON 的记录文件。
 def rows(path):
     return [json.loads(s) for s in path.read_text(encoding='utf-8').splitlines() if s.strip()]
 
 
+# 去掉题干中重复嵌入的选项段落，选项继续由 options 字段单独保存。
 def stem(question):
     return question.split('Answer Choices:', 1)[0].strip()
 
 
+# 统一大小写和空白等文本形式，便于比较；这种匹配不能证明两句话医学含义相同。
 def normalized(text):
     return ' '.join(re.findall(r'[a-z0-9]+', text.casefold()))
 
 
+# 对题干和选项内容生成指纹；选项排序后再计算，避免顺序变化被当成新题。
 def fingerprint(question, options):
     return hashlib.sha256(json.dumps([normalized(stem(question)), sorted(normalized(v) for v in options.values())], ensure_ascii=False).encode()).hexdigest()
 
@@ -55,6 +60,7 @@ def main():
                 continue
             seen.add(key)
             candidates.append((row, key))
+        # 固定随机种子，只打乱一次；不能看完模型成绩后再重新抽到满意为止。
         random.Random(SEED).shuffle(candidates)
         selected, overlaps = [], []
         for row, key in candidates:
@@ -74,6 +80,7 @@ def main():
         if len(selected) != 30:
             raise ValueError('Insufficient eligible questions')
         inputs = [{'id': key, 'question': stem(row['question']), 'options': row['options']} for row, key in selected]
+        # 标签单独保存给评分程序；inputs 里只包含题干、选项和样本 ID。
         labels = [{'id': key, 'answer_idx': row['label']} for row, key in selected]
         assert all(label['answer_idx'] in sample['options'] for label, sample in zip(labels, inputs))
         metadata = [{'id': key, 'source_id': row['id'], 'body_system': row['body_system'],

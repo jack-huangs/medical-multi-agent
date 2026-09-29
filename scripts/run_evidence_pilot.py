@@ -1,3 +1,4 @@
+# 文件用途：证据协作实验入口；模型后端、断点记录、调用日志、预算与失败处理。
 """Run and resume the mechanism prototype. Fake backend is offline and diagnostic only."""
 import argparse
 import importlib.metadata
@@ -14,10 +15,12 @@ from run_safety import RunLock, atomic_json, new_attempt
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# 逐行读取 JSON；每行一条记录，便于处理题目、标签或调用日志。
 def read_jsonl(path):
     return [json.loads(line) for line in Path(path).read_text(encoding='utf-8').splitlines() if line.strip()]
 
 
+# 追加事件日志，并尽快写入磁盘，方便崩溃后核对哪些请求已经发出。
 def emit(path, event):
     with path.open('a', encoding='utf-8') as stream:
         stream.write(json.dumps(event, ensure_ascii=False) + '\n')
@@ -25,6 +28,7 @@ def emit(path, event):
         os.fsync(stream.fileno())
 
 
+# 统一封装假后端和真实 API；假后端只验证程序能否跑通，不能衡量模型能力。
 class Backend:
     def __init__(self, name, attempt, model, max_calls, max_tokens, thinking='default', reasoning_effort=None):
         self.name, self.attempt, self.model = name, attempt, model
@@ -33,6 +37,7 @@ class Backend:
         self.thinking, self.reasoning_effort = thinking, reasoning_effort
 
     def complete(self, stage, system, payload):
+        # 先检查调用上限再发送请求；失败尝试也已经占用一次额度。
         if self.calls >= self.max_calls:
             raise RuntimeError('Per-case API call cap reached')
         self.calls += 1
@@ -85,6 +90,7 @@ class Backend:
                                                   'raw': raw, 'usage': usage, 'response_model': response_model,
                                                   'finish_reason': finish_reason,
                                                   'seconds': time.monotonic()-start})
+            # 输出预算可能被内部推理耗尽；收到响应不等于收到完整可用的 JSON。
             if finish_reason == 'length':
                 raise OutputTruncatedError('Output token limit reached')
             return json.loads(raw)
@@ -94,15 +100,18 @@ class Backend:
                                                   'error_type': type(exc).__name__})
             raise
 
+    # 释放模型客户端连接，避免运行结束后留下连接资源。
     def close(self):
         if self.client is not None:
             self.client.close()
 
 
+# 响应因输出额度耗尽而不完整时使用的异常；不把截断内容补成假答案。
 class OutputTruncatedError(RuntimeError):
     pass
 
 
+# 合并所有尝试的请求和返回用量；失败重跑也计入，不只统计最后一次成功。
 def accounting(run):
     events = [event for path in run.glob('cases/*/attempts/*/requests.jsonl') for event in read_jsonl(path)]
     starts = [row for row in events if row['event'] == 'request_started']
@@ -158,6 +167,8 @@ def main():
         endpoint_hash = digest(env.get('DEEPSEEK_BASE_URL') or 'https://api.deepseek.com')
     source_paths = [Path(__file__), Path(__file__).with_name('evidence_core.py'),
                     Path(__file__).with_name('evidence_workflow.py'), Path(__file__).with_name('run_safety.py')]
+    # 冻结输入、语料、源码和参数的指纹，避免中途改设置却仍算作同一轮实验。
+    # 源码注释也会改变文本指纹；旧实验快照保持原样，修改后应使用新运行目录。
     config = {'schema_version': 1, 'experiment': 'fixed_three_expert_known_copy_development',
               'backend': args.backend, 'model': model, 'endpoint_hash': endpoint_hash,
               'inputs_sha256': digest(args.inputs.read_text(encoding='utf-8')),
@@ -186,6 +197,7 @@ def main():
             with RunLock(case / '.case.lock'):
                 result_path = case / 'result.json'
                 old = json.loads(result_path.read_text(encoding='utf-8')) if result_path.exists() else None
+                # 已完成的题直接复用；失败题也不会悄悄重试，除非显式指定重试参数。
                 if old and (old['status'] == 'completed' or not args.retry_failed):
                     results.append(old)
                     continue
@@ -200,6 +212,7 @@ def main():
                     for update in graph.stream(state, stream_mode='updates'):
                         for node, values in update.items():
                             state.update(values)
+                            # 每个图节点完成后落盘，出错时可以定位停在哪一步。
                             atomic_json(attempt / f'checkpoint_{node}.json', state)
                     result.update(status='completed', state=state)
                 except Exception as exc:

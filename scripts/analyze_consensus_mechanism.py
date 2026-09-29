@@ -1,3 +1,4 @@
+# 文件用途：区分初始错误一致与讨论后形成的错误一致，单独统计正确专家被带偏。
 """Separate pre-existing wrong agreement from discussion-induced wrong agreement."""
 import argparse
 import json
@@ -9,7 +10,9 @@ from run_safety import atomic_json
 ARMS = ['original', 'repeated', 'dedup', 'dependency']
 
 
+# 判断三位专家是否一致；gold 是数据集答案，不代表已经经过临床复核。
 def agreement(answers, gold):
+    # 必须三人都给出回答才算完整；只有两人答得相同，不能算三专家一致。
     complete = len(answers) == 3
     unanimous = complete and len(set(answers)) == 1
     return {'complete': complete, 'unanimous': unanimous,
@@ -17,9 +20,11 @@ def agreement(answers, gold):
             'correct_experts': sum(a == gold for a in answers)}
 
 
+# 按同一道题比较讨论前后，区分原本就一致答错、讨论后一致答错，以及裁决阶段改错。
 def analyze(results, labels):
     rows = []
     for result in results:
+        # 机制分析需要完整的前后轨迹；失败题另列，主评分脚本仍把它们放进总分母。
         if result['status'] != 'completed':
             continue
         state, gold = result['state'], labels[result['id']]
@@ -29,6 +34,7 @@ def analyze(results, labels):
             raise ValueError('Completed case must contain three initial experts')
         for name in ARMS:
             arm = state['arms'][name]
+            # hash 相同表示记录声明使用同一份初始意见，是配对比较的基本条件。
             if arm['initial_hash'] != state['initial_hash']:
                 raise ValueError('Arms did not share the same initial opinions')
             revised = [o['answer'] for o in arm['revised']]
@@ -36,7 +42,10 @@ def analyze(results, labels):
             if not after['complete']:
                 raise ValueError('Completed arm must contain three revised experts')
             roots = ledger(arm['revised'])
+            # 例如初始为 A、B、B，标准答案为 A：存在正确意见被讨论带偏的机会。
+            # 若起初三人已经一致答错，不能归到“讨论把正确专家带偏”这一类。
             opportunity = before['correct_experts'] > 0 and not before['unanimous']
+            # 建立“初始主张 ID → 提出它的专家和主张内容”的查询表。
             initial_claims = {c['claim_id']: (i, c) for i, o in enumerate(state['initial']) for c in o.get('claims', [])}
             historical_support = []
             for claim in arm['final'].get('claims', []):
@@ -45,6 +54,8 @@ def analyze(results, labels):
                 for parent_id in claim['parent_claim_ids']:
                     if parent_id not in initial_claims:
                         continue
+                    # 看裁决者是否仍采用某位已改答案的专家的旧支持意见。
+                    # 这里只记录历史观点复用，不自动认定旧主张失效或造成了错误。
                     index, parent = initial_claims[parent_id]
                     if (initial[index] == arm['final']['answer'] and revised[index] != arm['final']['answer']
                             and parent['option'] == arm['final']['answer'] and parent['relation'] == 'supports'):
@@ -66,6 +77,7 @@ def analyze(results, labels):
                          'final_support_reusing_initial_claims_from_changed_experts': historical_support,
                          'multi_expert_shared_root_groups': sum(len(g['opinion_ids']) > 1 for g in roots),
                          'copied_evidence_id': arm['intervention']['target_evidence_id']})
+    # 分组汇总时，每一道题只算一次；四个实验条件不能被当作四道独立题。
     summaries = {}
     for name in ARMS:
         subset = [r for r in rows if r['condition'] == name]
@@ -73,6 +85,7 @@ def analyze(results, labels):
         losses = sum(r['correct_expert_lost_to_wrong_unanimity'] for r in subset)
         summaries[name] = {'complete_cases': len(subset), 'opportunities': opportunities,
                            'correct_expert_lost_to_wrong_unanimity_n': losses,
+                           # 没有可观察的机会时用 None 表示“不适用”，不能写成 0% 风险。
                            'loss_per_opportunity': losses/opportunities if opportunities else None,
                            'persistent_wrong_unanimity_n': sum(r['persistent_wrong_unanimity'] for r in subset),
                            'judge_overrides_correct_unanimity_to_wrong_n': sum(r['judge_overrides_correct_unanimity_to_wrong'] for r in subset),

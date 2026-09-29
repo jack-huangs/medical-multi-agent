@@ -1,3 +1,4 @@
+# 文件用途：冻结旧 MedQA pilot/reserve/demonstrations 分组及标签。
 """Freeze development inputs and evaluator-only labels without calling an API."""
 
 import hashlib
@@ -11,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[3]
 SEED = 20260923
 
 
+# 根据题目内容生成身份标识，帮助固定样本和检查重复。
 def identity(row):
     # Exact normalized matches only; this does not detect semantic contamination.
     content = {
@@ -24,6 +26,7 @@ def identity(row):
     return hashlib.sha256(encoded).hexdigest()
 
 
+# 读取原始题目记录，后续分别生成输入和评估标签。
 def read_rows(path):
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 

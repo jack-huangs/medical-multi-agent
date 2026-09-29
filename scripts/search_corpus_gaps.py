@@ -1,3 +1,4 @@
+# 文件用途：为已知语料缺口搜索候选文章，保留查询与响应，不修改冻结语料。
 """Search candidate references for known corpus gaps, without changing frozen evidence."""
 import json
 import urllib.parse
@@ -9,6 +10,7 @@ from pathlib import Path
 from run_evidence_pilot import ROOT
 from run_safety import atomic_json, RunLock
 
+# 数字是冻结开发集中的零起始位置；这里按语料缺口选主题，不按模型答错的题来选。
 QUERIES = {
     4: '(venlafaxine AND (normetanephrine OR metanephrine))',
     5: '(syncope AND (micturition OR "aortic stenosis"))',
@@ -23,6 +25,7 @@ QUERIES = {
 }
 
 
+# 按预先固定的主题搜索候选文章；保存原始响应，暂不加入实验语料。
 def search(item):
     index, terms, out = item
     query = f'{terms} AND OPEN_ACCESS:Y AND IN_EPMC:Y'
@@ -37,6 +40,7 @@ def search(item):
                 data = json.loads(response.read())
             atomic_json(path, data)
         hits = [h for h in data.get('resultList', {}).get('result', []) if h.get('pmcid')]
+        # 只在已返回的候选中优先选综述，再看被引次数；这不等于临床质量排名。
         hits.sort(key=lambda h: (not any('review' in p.lower() for p in h.get('pubTypeList', {}).get('pubType', [])),
                                  -h.get('citedByCount', 0), h['pmcid']))
         return {'index': index, 'query': query, 'url': url, 'hit_count': data.get('hitCount'),
@@ -56,6 +60,7 @@ def main():
         atomic_json(out / 'query_plan.json', {'queries': QUERIES,
                     'selection': 'Known missing topics, using prior frozen topics only; no labels or model outcomes.',
                     'limits': '10 queries, top20 relevance results, prefer review within retrieved hits; 3 workers; no retry.'})
+        # 并发下载公开检索结果，不调用大模型；候选仍需许可和原文相关性复核。
         with ThreadPoolExecutor(max_workers=3) as executor:
             rows = list(executor.map(search, [(i, terms, out) for i, terms in QUERIES.items()]))
         atomic_json(out / 'manifest.json', {'at': datetime.now(timezone.utc).isoformat(), 'searches': rows,

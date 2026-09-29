@@ -1,3 +1,4 @@
+# 文件用途：导入 Europe PMC 开放许可文章，保留 XML、来源和段落位置。
 """Import a CC BY PMC article through Europe PMC's fullTextXML service."""
 import argparse
 import hashlib
@@ -10,10 +11,12 @@ from pathlib import Path
 from run_safety import RunLock, atomic_json
 
 
+# 提取 XML 标签内的文字并整理空白，去掉标签本身。
 def text_of(node):
     return ' '.join(''.join(node.itertext()).split()) if node is not None else ''
 
 
+# 从 XML 核验文章身份和 CC BY 许可，再提取正文段落；许可通过不代表内容适用。
 def convert(data, pmcid):
     root = ET.fromstring(data)
     licenses = root.findall('.//license')

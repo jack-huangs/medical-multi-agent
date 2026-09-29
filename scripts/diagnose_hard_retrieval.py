@@ -1,3 +1,4 @@
+# 文件用途：比较题目、题目加选项和人工主题查询；仅作覆盖排查，不作医学相关性评分。
 """Offline corpus/query diagnostics; topic-only retrieval is a manual diagnostic control."""
 import json
 from collections import Counter

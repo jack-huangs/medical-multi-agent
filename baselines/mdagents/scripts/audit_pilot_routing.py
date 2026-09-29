@@ -1,3 +1,4 @@
+# 文件用途：核验旧实验路由响应和单次运行日志完整性。
 """Verify adaptive routing against original API responses, without model calls."""
 import argparse
 import json
@@ -8,6 +9,7 @@ from pathlib import Path
 from run_consensus_pilot import read_jsonl, save_json
 
 
+# 对照原始调用日志核验路由与记录完整性，不重新请求模型。
 def audit(run):
     config = json.loads((run / 'config.json').read_text(encoding='utf-8'))
     rows = json.loads((run / 'scored_results.json').read_text(encoding='utf-8'))

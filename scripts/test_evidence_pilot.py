@@ -1,3 +1,4 @@
+# 文件用途：引用、隔离、对照预算、锁、缓存、恢复及指标离线回归测试。
 """Offline tests for causal controls, provenance validation, locking and restart safety."""
 import copy
 import json
@@ -21,6 +22,7 @@ FIXTURE = ROOT / 'examples/evidence_dependency'
 
 
 class EvidenceTests(unittest.TestCase):
+    # 每个测试开始前准备独立样例，避免前一个测试修改的数据影响下一个。
     def setUp(self):
         os.environ['LANGSMITH_TRACING'] = 'false'
         os.environ['LANGCHAIN_TRACING_V2'] = 'false'
@@ -28,17 +30,20 @@ class EvidenceTests(unittest.TestCase):
         self.retriever = LocalBM25Retriever.from_jsonl(FIXTURE / 'corpus.jsonl', k=3)
         self.evidence = retrieve(self.retriever, self.sample)
 
+    # 构造一份带合法引用的虚构专家意见，再按测试需要故意修改它。
     def opinion(self):
         source = self.evidence[0]
         return {'answer': 'A', 'confidence': 0.5, 'brief_basis': 'test', 'claims': [
             {'option': 'A', 'relation': 'supports', 'text': 'test claim',
              'citations': [{'evidence_id': source['evidence_id'], 'quote': source['text']}], 'parent_claim_ids': []}]}
 
+    # 防答案泄漏：检索输入混入标准答案时必须拒绝；同一输入的离线检索应可重复。
     def test_labels_rejected_and_retrieval_deterministic(self):
         with self.assertRaises(ValueError):
             retrieve(self.retriever, {**self.sample, 'answer_idx': 'A'})
         self.assertEqual(self.evidence, retrieve(self.retriever, self.sample))
 
+    # 去掉通用词时，必须保留 no、医学词和数值，避免把“不存在”变成“存在”。
     def test_content_term_retrieval_keeps_negation_and_clinical_terms(self):
         from evidence_core import retrieval_tokens
         tokens = retrieval_tokens('A patient has no ferritin elevation and 120 mm Hg', 'content_terms')
@@ -47,6 +52,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn('ferritin', tokens)
         self.assertIn('120', tokens)
 
+    # 不存在的证据编号或编造的引文，都应被校验器拦住。
     def test_unknown_citation_and_fabricated_quote_rejected(self):
         for change in [{'evidence_id': 'UNKNOWN'}, {'quote': 'This sentence never existed in the source.'}]:
             value = self.opinion()
@@ -54,6 +60,7 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_opinion(value, self.sample['options'], self.evidence, 'I0')
 
+    # 换个说法继承旧观点，仍然属于旧来源，不能增加独立证据数量。
     def test_inherited_paraphrase_keeps_roots_without_new_evidence(self):
         parent = validate_opinion(self.opinion(), self.sample['options'], self.evidence, 'I0')
         value = self.opinion()
@@ -65,6 +72,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(entries[0]['known_root_contributions'], 1)
         self.assertEqual(len(entries[0]['claim_ids']), 2)
 
+    # 同一篇文章中的不同片段，不应仅因文档相同就全部合并。
     def test_same_document_different_passages_not_collapsed(self):
         evidence = [row for row in self.evidence if row['document_id'] == 'toy-handbook']
         opinions = []
@@ -74,6 +82,7 @@ class EvidenceTests(unittest.TestCase):
             opinions.append(validate_opinion(value, self.sample['options'], self.evidence, str(i)))
         self.assertEqual(len(ledger(opinions)), 2)
 
+    # 支持和反驳都必须保留，不能为了去重把冲突意见抹掉。
     def test_support_and_refutation_are_preserved(self):
         support = validate_opinion(self.opinion(), self.sample['options'], self.evidence, 'I0')
         value = self.opinion()
@@ -81,6 +90,7 @@ class EvidenceTests(unittest.TestCase):
         refute = validate_opinion(value, self.sample['options'], self.evidence, 'I1')
         self.assertEqual({row['relation'] for row in ledger([support, refute])}, {'supports', 'refutes'})
 
+    # 重复干预不改基础证据；原文复制时，普通去重后应回到原始输入。
     def test_intervention_preserves_base_evidence_and_dedup_control(self):
         before = copy.deepcopy(self.evidence)
         arms = {name: intervention(self.evidence, self.sample['id'], name) for name in ['original', 'repeated', 'dedup', 'dependency']}
@@ -90,6 +100,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(len({row['target_evidence_id'] for row in arms.values()}), 1)
         self.assertEqual(sum(len(x['text']) for x in arms['original']['slots']), sum(len(x['text']) for x in arms['repeated']['slots']))
 
+    # 检查专家第一轮看不到彼此意见、各组起点相同，且完整流程调用数为 26。
     def test_full_graph_has_isolated_initial_prompts_and_shared_start(self):
         with tempfile.TemporaryDirectory() as temp:
             attempt = new_attempt(Path(temp) / 'cases' / 'toy001')
@@ -107,12 +118,14 @@ class EvidenceTests(unittest.TestCase):
                 self.assertEqual(set(payload['case']), {'id', 'question', 'options'})
             self.assertEqual(accounting(Path(temp))['paid_api_calls_attempted'], 0)
 
+    # 达到预算上限后，应在发送下一次请求之前停止。
     def test_budget_blocks_additional_calls(self):
         with tempfile.TemporaryDirectory() as temp:
             backend = Backend('fake', new_attempt(temp), 'fake', 0, 512)
             with self.assertRaises(RuntimeError):
                 backend.complete('test', '', {})
 
+    # 只有请求一致且响应完整才能复用，防止拿不匹配的旧答案冒充新结果。
     def test_replay_requires_exact_prompt_and_rejects_truncation(self):
         with tempfile.TemporaryDirectory() as temp:
             source = Path(temp) / 'source'
@@ -132,6 +145,7 @@ class EvidenceTests(unittest.TestCase):
             (attempt / 'requests.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in events), encoding='utf-8')
             self.assertEqual(replay_records(source), {})
 
+    # 文章身份和开放许可都要核验，不能下载到什么就直接加入语料。
     def test_import_requires_matching_id_and_explicit_reuse_license(self):
         xml = b'<article><front><article-meta><article-id pub-id-type="pmc">123</article-id><title-group><article-title>Fixture</article-title></title-group><permissions><license><p>https://creativecommons.org/licenses/by/4.0/</p></license></permissions></article-meta></front><body><p>This is a long synthetic paragraph for checking import and source attribution. It is deliberately not medical evidence.</p></body></article>'
         title, license_text, chunks = convert(xml, 'PMC123')
@@ -146,6 +160,7 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             convert(xml.replace(b'creativecommons.org/licenses/by/4.0/', b'copyright.example/all-rights-reserved'), 'PMC123')
 
+    # 调试模式省略七次单专家自审后应有 19 次调用，评分也不能虚构该对照结果。
     def test_connectivity_mode_omits_single_control_and_has_19_calls(self):
         with tempfile.TemporaryDirectory() as temp:
             backend = Backend('fake', new_attempt(temp), 'fake', 19, 512)
@@ -157,6 +172,7 @@ class EvidenceTests(unittest.TestCase):
             self.assertEqual(scored['not_run_conditions'], ['single'])
             self.assertNotIn('single', scored['condition_summary'])
 
+    # 模拟进程突然退出，确认残留锁文件不会永远阻止下一次运行。
     def test_killed_lock_holder_does_not_leave_permanent_lock(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / 'lock'
@@ -166,6 +182,7 @@ class EvidenceTests(unittest.TestCase):
             with RunLock(path):
                 pass
 
+    # 检查跨进程互斥：占用时禁止另一进程写入，退出后允许重新进入。
     def test_lock_blocks_another_process_and_releases_after_exit(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / 'lock'
@@ -181,6 +198,7 @@ class EvidenceTests(unittest.TestCase):
             with RunLock(path):
                 pass
 
+    # 同一已完成实验再启动，应复用结果，不能重复付费或覆盖旧尝试。
     def test_cli_resume_does_not_append_calls_or_overwrite_attempt(self):
         with tempfile.TemporaryDirectory() as temp:
             run = Path(temp) / 'run'
@@ -198,6 +216,7 @@ class EvidenceTests(unittest.TestCase):
             self.assertEqual(len(list(run.glob('cases/*/attempts/*/requests.jsonl'))), 1)
             self.assertEqual(accounting(run)['attempted_calls_all_attempts'], 26)
 
+    # 用小样例核对两个错误一致率分母，以及缺失答案的处理。
     def test_consensus_denominators_and_missing_answers(self):
         def arm(answer, votes):
             return {'final': {'answer': answer, 'confidence': .5}, 'revised': [{'answer': vote} for vote in votes]}

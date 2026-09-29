@@ -1,3 +1,4 @@
+# 文件用途：显式调试续跑与成功响应复用；不同预算调试不作正式对照。
 """Single-case diagnostic continuation with exact-request replay.
 
 Allows a different output cap after truncation. This is explicitly NOT an equal-budget
@@ -15,10 +16,12 @@ from run_evidence_pilot import Backend, accounting, emit, read_jsonl
 from run_safety import RunLock, atomic_json, new_attempt
 
 
+# 按请求内容和模型配置生成缓存键；这里只允许调试改变输出上限，不是等预算实验。
 def replay_key(stage, model, messages, thinking='default', reasoning_effort=None):
     return digest([stage, model, messages, 0, thinking, reasoning_effort])
 
 
+# 只缓存正常结束且可解析的响应；截断或没有对应请求的内容不能复用。
 def replay_records(source_run):
     cache = {}
     for path in sorted(source_run.glob('cases/*/attempts/*/requests.jsonl')):
@@ -40,6 +43,7 @@ def replay_records(source_run):
     return cache
 
 
+# 优先复用完全匹配的旧响应，找不到时才请求模型，并分别记录新增调用。
 class ReplayBackend(Backend):
     def __init__(self, *args, cache, **kwargs):
         super().__init__(*args, **kwargs)

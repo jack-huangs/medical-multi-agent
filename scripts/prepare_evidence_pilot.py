@@ -1,3 +1,4 @@
+# 文件用途：从旧 reserve 集未使用部分冻结新研究 MedQA 开发样本。
 """Freeze 30 previously unused development inputs, separately from labels. No API calls."""
 import json
 import re

@@ -1,3 +1,4 @@
+# 文件用途：MDAgents 上游主程序及命令行入口。
 import os
 import json
 import random

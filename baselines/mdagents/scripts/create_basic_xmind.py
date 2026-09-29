@@ -1,3 +1,4 @@
+# 文件用途：生成 MDAgents 基础流程 XMind 图。
 from __future__ import annotations
 
 from datetime import datetime, timezone

@@ -1,3 +1,4 @@
+# 文件用途：离线比较原始查询与内容词查询的检索结果。
 """Inspect a frozen corpus without an LLM or gold-label access."""
 import json
 from pathlib import Path

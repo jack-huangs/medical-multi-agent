@@ -1,3 +1,4 @@
+# 文件用途：难度探测分组评分、失败数和置信区间。
 """Offline scores for the frozen, matched-protocol difficulty probe."""
 import argparse
 import json

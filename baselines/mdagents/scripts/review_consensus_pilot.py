@@ -1,3 +1,4 @@
+# 文件用途：旧实验答案复核与汇总。
 """Rescore explicit first-line answers and report input-quality subgroups offline."""
 import argparse
 import json

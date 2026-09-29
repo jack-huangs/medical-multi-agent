@@ -1,6 +1,8 @@
+# 文件用途：共享 Wilson 比例置信区间计算，避免新研究依赖旧运行器。
 """Shared offline evaluation statistics."""
 import math
 
+# 估计正确率的 Wilson 置信区间；样本少时，即使全对，区间也不会只剩 100%。
 def wilson(correct, count):
     if not count:
         return None

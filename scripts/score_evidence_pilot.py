@@ -1,3 +1,4 @@
+# 文件用途：读取隔离标签，计算协作准确率、错误一致和前后转换。
 """Offline scoring. This is the only evaluation component that reads gold labels."""
 import argparse
 import json
@@ -7,6 +8,7 @@ from run_safety import atomic_json
 ARMS = ['original', 'repeated', 'dedup', 'dependency', 'single']
 
 
+# 先生成每题每组的记录，再汇总正确率与错误一致率；失败题仍计入计划样本数。
 def evaluate(results, labels, arms=None):
     arms = ARMS if arms is None else arms
     if len({row['id'] for row in results}) != len(results):
@@ -21,8 +23,10 @@ def evaluate(results, labels, arms=None):
             final = arm.get('final', {})
             revised = arm.get('revised', [])
             choices = [opinion['answer'] for opinion in revised]
+            # 这里的一致性来自三位修订专家，不是最终裁决者的单个答案。
             unanimous = len(choices) == 3 and len(set(choices)) == 1
             wrong_unanimity = unanimous and choices[0] != gold
+            # 按专家顺序逐个比较讨论前后，统计谁从正确变错、谁从错误变对。
             agent_pairs = list(zip(initial_answers, choices)) if len(initial_answers) == len(choices) == 3 else []
             table.append({'id': row['id'], 'condition': name, 'status': row['status'],
                           'gold': gold, 'answer': final.get('answer'), 'correct': final.get('answer') == gold,
@@ -39,9 +43,11 @@ def evaluate(results, labels, arms=None):
         wrong = sum(row['wrong_unanimity'] for row in subset)
         summaries[name] = {'n': total, 'correct': sum(row['correct'] for row in subset),
                            'missing_answers': sum(row['answer'] is None for row in subset),
+                           # 失败或缺失答案也占分母，避免只保留成功题导致正确率虚高。
                            'accuracy_including_failures': sum(row['correct'] for row in subset)/total if total else None,
                            'unanimous_n': unanimous if name != 'single' else None,
                            'wrong_unanimity_n': wrong if name != 'single' else None,
+                           # 两种分母回答不同问题：全部题中有多少错误一致；一致题中有多少答错。
                            'wrong_unanimity_per_all': wrong/total if total and name != 'single' else None,
                            'wrong_unanimity_per_unanimous': wrong/unanimous if unanimous else None}
     indexed = {(row['id'], row['condition']): row for row in table}
@@ -52,6 +58,7 @@ def evaluate(results, labels, arms=None):
             continue
         a = [indexed[(row['id'], first)] for row in results]
         b = [indexed[(row['id'], second)] for row in results]
+        # 跨条件转换只比较两边都有答案的同一道题；缺失数在上面的汇总中单列。
         valid = [(x, y) for x, y in zip(a, b) if x['answer'] is not None and y['answer'] is not None]
         pairs[f'{first}_to_{second}'] = {
             'planned_pairs': len(results), 'valid_answer_pairs': len(valid),

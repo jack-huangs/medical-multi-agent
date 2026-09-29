@@ -1,3 +1,4 @@
+# 文件用途：旧 MDAgents 自适应实验运行器，含隔离 worker、轨迹与评分。
 """Run the frozen development pilot with isolated workers and incremental scoring."""
 
 import argparse
@@ -21,14 +22,17 @@ ROOT = Path(__file__).resolve().parents[3]
 PILOT = ROOT / 'baselines/mdagents/runs/consensus_pilot_20260923'
 
 
+# 逐行读取 JSON；每行一条记录，便于处理题目、标签或调用日志。
 def read_jsonl(path):
     return [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]
 
 
+# 通过公共原子写入工具保存结果，减少中断导致的文件损坏。
 def save_json(path, value):
     atomic_json(path, value)
 
 
+# 兼容旧实验不同的响应结构，取出最终可评分的答案文本。
 def answer_text(response):
     if isinstance(response, str):
         return response
@@ -41,6 +45,7 @@ def answer_text(response):
     return ''
 
 
+# 只接受明确选择的选项字母；模糊或矛盾输出留作缺失，避免随意猜答案。
 def parse_answer(text, options):
     """Accept explicit selections only; ambiguous output needs manual review."""
     cleaned = re.sub(r'[*_`#]', '', text)
@@ -58,6 +63,7 @@ def parse_answer(text, options):
     return None
 
 
+# 估计正确率的 Wilson 置信区间；样本少时，即使全对，区间也不会只剩 100%。
 def wilson(correct, count):
     if not count:
         return None
@@ -84,6 +90,7 @@ def worker(sample, demos, config, run_dir):
         return result
 
 
+# 执行某题的一次隔离尝试；调用限制和日志属于本次尝试。
 def run_worker_attempt(sample, demos, config, out):
     # Only inputs and independent demonstration labels enter this process.
     sys.path.insert(0, str(ROOT / 'baselines/mdagents/upstream'))
@@ -156,6 +163,7 @@ def run_worker_attempt(sample, demos, config, out):
     return result
 
 
+# 汇总本批已保存结果；不要把日志缺失或失败记录当作正常成功。
 def summarize(results, labels, total, elapsed):
     correct = sum(row.get('prediction') == labels[row['id']]['answer_idx'] for row in results)
     errors = sum(row['status'] != 'completed' for row in results)
@@ -186,6 +194,7 @@ def summarize(results, labels, total, elapsed):
     }
 
 
+# 把当前统计保存为可阅读报告，原始逐题日志仍单独保留。
 def write_reports(run, results, labels, samples, summary):
     scored = [{**row, 'gold': labels[row['id']]['answer_idx'],
                'correct': row.get('prediction') == labels[row['id']]['answer_idx']} for row in results]
@@ -243,6 +252,7 @@ def main():
         execute_run(args, run, inputs, labels, demos, input_path)
 
 
+# 保存运行配置及源码版本，安排题目执行并持续写出结果。
 def execute_run(args, run, inputs, labels, demos, input_path):
     sources = [ROOT / 'baselines/mdagents/upstream/utils.py', Path(__file__).resolve(),
                ROOT / 'scripts/run_safety.py']
